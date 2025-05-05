@@ -143,7 +143,7 @@ export default function ProfilePage() {
   // Update profile mutation
   const updateProfileMutation = useMutation({
     mutationFn: async (data: z.infer<typeof profileFormSchema>) => {
-      const res = await apiRequest("PATCH", `/api/user/${user?.id}`, data);
+      const res = await apiRequest("PATCH", `/user/${user?.id}`, data);
       return res.json();
     },
     onSuccess: () => {
@@ -167,11 +167,11 @@ export default function ProfilePage() {
     mutationFn: async (data: z.infer<typeof companyFormSchema>) => {
       if (company) {
         // Update existing company
-        const res = await apiRequest("PATCH", `/api/company/${company.id}`, data);
+        const res = await apiRequest("PATCH", `/company/${company.id}`, data);
         return res.json();
       } else {
         // Create new company
-        const res = await apiRequest("POST", "/api/company", data);
+        const res = await apiRequest("POST", "/company", data);
         return res.json();
       }
     },

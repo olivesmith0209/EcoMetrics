@@ -12,7 +12,14 @@ export async function apiRequest(
   url: string,
   data?: unknown | undefined,
 ): Promise<Response> {
-  const res = await fetch(url, {
+  // Make sure the URL has the correct format
+  // If the URL already starts with http or /, use it as is
+  // Otherwise, ensure it has the correct API prefix
+  const finalUrl = url.startsWith('http') || url.startsWith('/api') 
+    ? url 
+    : `/api${url.startsWith('/') ? url : '/' + url}`;
+    
+  const res = await fetch(finalUrl, {
     method,
     headers: data ? { "Content-Type": "application/json" } : {},
     body: data ? JSON.stringify(data) : undefined,
