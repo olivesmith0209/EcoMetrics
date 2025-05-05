@@ -79,9 +79,9 @@ export class SupabaseSupport {
     const { data, error } = await supabase
       .from('support_tickets')
       .insert({
-        user_id: validatedData.user_id,
-        company_id: validatedData.company_id,
-        category_id: validatedData.category_id,
+        user_id: validatedData.userId,
+        company_id: validatedData.companyId,
+        category_id: validatedData.categoryId,
         subject: validatedData.subject,
         status: validatedData.status,
         priority: validatedData.priority
@@ -159,20 +159,20 @@ export class SupabaseSupport {
   async createSupportMessage(messageData: any) {
     const validatedData = insertSupportMessageSchema.parse({
       ...messageData,
-      ticket_id: messageData.ticketId,
-      user_id: messageData.userId,
-      is_staff: messageData.isStaff || false
+      ticketId: messageData.ticketId,
+      userId: messageData.userId,
+      isStaff: messageData.isStaff || false
     });
     
     // Insert the message
     const { data, error } = await supabase
       .from('support_messages')
       .insert({
-        ticket_id: validatedData.ticket_id,
-        user_id: validatedData.user_id,
-        is_staff: validatedData.is_staff,
+        ticket_id: validatedData.ticketId,
+        user_id: validatedData.userId,
+        is_staff: validatedData.isStaff,
         message: validatedData.message,
-        attachment_url: validatedData.attachment_url
+        attachment_url: validatedData.attachmentUrl
       })
       .select()
       .single();
@@ -186,7 +186,7 @@ export class SupabaseSupport {
     await supabase
       .from('support_tickets')
       .update({ updated_at: new Date().toISOString() })
-      .eq('id', validatedData.ticket_id);
+      .eq('id', validatedData.ticketId);
     
     return data;
   }

@@ -47,6 +47,14 @@ const upload = multer({
 export async function registerRoutes(app: Express): Promise<Server> {
   // Set up authentication routes
   setupAuth(app);
+  
+  // Initialize Supabase support system tables
+  try {
+    await initializeSupportSystem();
+    console.log('Support system initialized successfully');
+  } catch (error) {
+    console.error('Error initializing support system:', error);
+  }
 
   // API prefix
   const apiPrefix = "/api";
