@@ -5,7 +5,10 @@ import { setupAuth } from "./auth";
 import { format } from "date-fns";
 import multer from "multer";
 import { z } from "zod";
-import { insertEmissionSchema, insertReportSchema } from "@shared/schema";
+import { 
+  insertEmissionSchema, insertReportSchema,
+  insertSupportTicketSchema, insertSupportMessageSchema
+} from "@shared/schema";
 import fs from "fs";
 import path from "path";
 
@@ -503,6 +506,226 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching subscription:", error);
       res.status(500).json({ message: "Failed to fetch subscription" });
+    }
+  });
+
+  // ===== Support Routes =====
+  
+  // Get support categories
+  app.get(`${apiPrefix}/support/categories`, requireAuth, async (req, res) => {
+    try {
+      const categories = await storage.getSupportCategories();
+      res.json(categories);
+    } catch (error) {
+      console.error("Error fetching support categories:", error);
+      res.status(500).json({ message: "Failed to fetch support categories" });
+    }
+  });
+
+  // Get user's support tickets
+  app.get(`${apiPrefix}/support/tickets`, requireAuth, async (req, res) => {
+    try {
+      const { status } = req.query;
+      
+      const filters: any = {};
+      if (status) filters.status = status as string;
+      
+      const tickets = await storage.getSupportTickets(req.user!.id, filters);
+      res.json(tickets);
+    } catch (error) {
+      console.error("Error fetching support tickets:", error);
+      res.status(500).json({ message: "Failed to fetch support tickets" });
+    }
+  });
+
+  // Get a specific ticket
+  app.get(`${apiPrefix}/support/tickets/:id`, requireAuth, async (req, res) => {
+    try {
+      const ticketId = parseInt(req.params.id);
+      const ticket = await storage.getSupportTicketById(ticketId);
+      
+      if (!ticket) {
+        return res.status(404).json({ message: "Ticket not found" });
+      }
+      
+      // Verify ticket belongs to the user
+      if (ticket.userId !== req.user!.id) {
+        return res.status(403).json({ message: "Not authorized to access this ticket" });
+      }
+      
+      res.json(ticket);
+    } catch (error) {
+      console.error("Error fetching support ticket:", error);
+      res.status(500).json({ message: "Failed to fetch support ticket" });
+    }
+  });
+
+  // Create a new support ticket
+  app.post(`${apiPrefix}/support/tickets`, requireAuth, async (req, res) => {
+    try {
+      const ticketData = {
+        ...req.body,
+        userId: req.user!.id,
+        companyId: req.user!.companyId,
+        status: 'open',
+        priority: req.body.priority || 'medium',
+        categoryId: parseInt(req.body.categoryId),
+      };
+      
+      // Create ticket
+      const validatedData = insertSupportTicketSchema.parse(ticketData);
+      const ticket = await storage.createSupportTicket(validatedData);
+      
+      // Create initial message if provided
+      if (req.body.message) {
+        const messageData = {
+          ticketId: ticket.id,
+          userId: req.user!.id,
+          message: req.body.message,
+          isStaff: false
+        };
+        
+        await storage.createSupportMessage(messageData);
+      }
+      
+      res.status(201).json(ticket);
+    } catch (error) {
+      console.error("Error creating support ticket:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to create support ticket" });
+    }
+  });
+
+  // Update a support ticket
+  app.patch(`${apiPrefix}/support/tickets/:id`, requireAuth, async (req, res) => {
+    try {
+      const ticketId = parseInt(req.params.id);
+      const ticket = await storage.getSupportTicketById(ticketId);
+      
+      if (!ticket) {
+        return res.status(404).json({ message: "Ticket not found" });
+      }
+      
+      // Verify ticket belongs to the user
+      if (ticket.userId !== req.user!.id) {
+        return res.status(403).json({ message: "Not authorized to update this ticket" });
+      }
+      
+      const ticketData = {
+        ...req.body,
+        categoryId: req.body.categoryId ? parseInt(req.body.categoryId) : undefined,
+      };
+      
+      // Update ticket
+      const updatedTicket = await storage.updateSupportTicket(ticketId, ticketData);
+      
+      res.json(updatedTicket);
+    } catch (error) {
+      console.error("Error updating support ticket:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to update support ticket" });
+    }
+  });
+
+  // Get messages for a ticket
+  app.get(`${apiPrefix}/support/tickets/:id/messages`, requireAuth, async (req, res) => {
+    try {
+      const ticketId = parseInt(req.params.id);
+      const ticket = await storage.getSupportTicketById(ticketId);
+      
+      if (!ticket) {
+        return res.status(404).json({ message: "Ticket not found" });
+      }
+      
+      // Verify ticket belongs to the user
+      if (ticket.userId !== req.user!.id) {
+        return res.status(403).json({ message: "Not authorized to access this ticket's messages" });
+      }
+      
+      const messages = await storage.getSupportMessages(ticketId);
+      res.json(messages);
+    } catch (error) {
+      console.error("Error fetching support messages:", error);
+      res.status(500).json({ message: "Failed to fetch support messages" });
+    }
+  });
+
+  // Create a new message for a ticket
+  app.post(`${apiPrefix}/support/tickets/:id/messages`, requireAuth, async (req, res) => {
+    try {
+      const ticketId = parseInt(req.params.id);
+      const ticket = await storage.getSupportTicketById(ticketId);
+      
+      if (!ticket) {
+        return res.status(404).json({ message: "Ticket not found" });
+      }
+      
+      // Verify ticket belongs to the user
+      if (ticket.userId !== req.user!.id) {
+        return res.status(403).json({ message: "Not authorized to add messages to this ticket" });
+      }
+      
+      const messageData = {
+        ticketId,
+        userId: req.user!.id,
+        message: req.body.message,
+        isStaff: false
+      };
+      
+      // Create message
+      const validatedData = insertSupportMessageSchema.parse(messageData);
+      const message = await storage.createSupportMessage(validatedData);
+      
+      res.status(201).json(message);
+    } catch (error) {
+      console.error("Error creating support message:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to create support message" });
+    }
+  });
+
+  // ===== Help Articles Routes =====
+  
+  // Get help articles
+  app.get(`${apiPrefix}/help/articles`, async (req, res) => {
+    try {
+      const { categoryId, published } = req.query;
+      
+      const filters: any = {};
+      if (categoryId) filters.categoryId = parseInt(categoryId as string);
+      if (published !== undefined) filters.isPublished = published === 'true';
+      
+      const articles = await storage.getHelpArticles(filters);
+      res.json(articles);
+    } catch (error) {
+      console.error("Error fetching help articles:", error);
+      res.status(500).json({ message: "Failed to fetch help articles" });
+    }
+  });
+
+  // Get a help article by slug
+  app.get(`${apiPrefix}/help/articles/:slug`, async (req, res) => {
+    try {
+      const slug = req.params.slug;
+      const article = await storage.getHelpArticleBySlug(slug);
+      
+      if (!article) {
+        return res.status(404).json({ message: "Article not found" });
+      }
+      
+      // Increment view counter
+      await storage.incrementArticleViews(article.id);
+      
+      res.json(article);
+    } catch (error) {
+      console.error("Error fetching help article:", error);
+      res.status(500).json({ message: "Failed to fetch help article" });
     }
   });
 
