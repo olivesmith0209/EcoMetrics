@@ -1,16 +1,16 @@
-import { Pool, neonConfig } from '@neondatabase/serverless';
-import { drizzle } from 'drizzle-orm/neon-serverless';
-import ws from "ws";
+
+import { supabase } from '../server/supabase';
 import * as schema from "@shared/schema";
 
-// This is the correct way neon config - DO NOT change this
-neonConfig.webSocketConstructor = ws;
+// Export supabase client for database operations
+export const db = supabase;
 
-if (!process.env.DATABASE_URL) {
-  throw new Error(
-    "DATABASE_URL must be set. Did you forget to provision a database?",
-  );
+// You can add helper functions here to work with your schema
+export async function query<T>(table: string) {
+  const { data, error } = await supabase
+    .from(table)
+    .select('*');
+    
+  if (error) throw error;
+  return data as T[];
 }
-
-export const pool = new Pool({ connectionString: process.env.DATABASE_URL });
-export const db = drizzle({ client: pool, schema });
