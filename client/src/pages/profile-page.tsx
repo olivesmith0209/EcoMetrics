@@ -140,6 +140,69 @@ export default function ProfilePage() {
     }
   }, [company, companyForm]);
 
+  // Avatar upload mutation
+  const uploadAvatarMutation = useMutation({
+    mutationFn: async (file: File) => {
+      // Generate a unique file name
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${user?.id}-${Math.random().toString(36).substring(2)}.${fileExt}`;
+      
+      // Upload the file to Supabase Storage
+      const { data, error } = await supabase.storage
+        .from('avatars')
+        .upload(fileName, file, {
+          cacheControl: '3600',
+          upsert: true
+        });
+      
+      if (error) {
+        throw new Error(error.message);
+      }
+      
+      // Get the public URL for the uploaded file
+      const { data: { publicUrl } } = supabase.storage
+        .from('avatars')
+        .getPublicUrl(fileName);
+      
+      // Update the user profile with the avatar URL
+      const res = await apiRequest("PATCH", `/user/${user?.id}`, { 
+        avatarUrl: publicUrl 
+      });
+      
+      return await res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/user"] });
+      toast({
+        title: "Avatar updated",
+        description: "Your profile picture has been updated successfully.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Failed to update avatar",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+  
+  // Handler for avatar file upload
+  const handleAvatarUpload = (file: File) => {
+    // Check file size (max 2MB)
+    if (file.size > 2 * 1024 * 1024) {
+      toast({
+        title: "File too large",
+        description: "Please select an image under 2MB.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    // Upload the file
+    uploadAvatarMutation.mutate(file);
+  };
+
   // Update profile mutation
   const updateProfileMutation = useMutation({
     mutationFn: async (data: z.infer<typeof profileFormSchema>) => {
@@ -300,10 +363,18 @@ export default function ProfilePage() {
                   <CardContent className="space-y-6">
                     {/* Avatar Section */}
                     <div className="flex items-center space-x-4">
-                      <div className="bg-primary h-16 w-16 rounded-full flex items-center justify-center text-white font-medium text-xl">
-                        {user?.firstName && user?.lastName
-                          ? `${user.firstName.charAt(0)}${user.lastName.charAt(0)}`
-                          : user?.email ? user.email.substring(0, 2).toUpperCase() : "U"}
+                      <div className="bg-primary h-16 w-16 rounded-full flex items-center justify-center text-white font-medium text-xl overflow-hidden">
+                        {user?.avatarUrl ? (
+                          <img 
+                            src={user.avatarUrl} 
+                            alt="User avatar" 
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          user?.firstName && user?.lastName
+                            ? `${user.firstName.charAt(0)}${user.lastName.charAt(0)}`
+                            : user?.email ? user.email.substring(0, 2).toUpperCase() : "U"
+                        )}
                       </div>
                       <div>
                         <h3 className="font-medium">Profile Picture</h3>
@@ -311,9 +382,36 @@ export default function ProfilePage() {
                           JPG, PNG or GIF, max 2MB
                         </p>
                         <div className="mt-2">
-                          <Button type="button" variant="outline" size="sm">
-                            <Camera className="h-4 w-4 mr-2" />
-                            Change Avatar
+                          <input
+                            type="file"
+                            accept="image/*"
+                            id="avatar-upload"
+                            className="hidden"
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (file) {
+                                handleAvatarUpload(file);
+                              }
+                            }}
+                          />
+                          <Button 
+                            type="button" 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => document.getElementById('avatar-upload')?.click()}
+                            disabled={uploadAvatarMutation.isPending}
+                          >
+                            {uploadAvatarMutation.isPending ? (
+                              <>
+                                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                Uploading...
+                              </>
+                            ) : (
+                              <>
+                                <Camera className="h-4 w-4 mr-2" />
+                                Change Avatar
+                              </>
+                            )}
                           </Button>
                         </div>
                       </div>
@@ -517,21 +615,21 @@ export default function ProfilePage() {
                           />
                         </div>
 
-                        <FormField
-                          control={companyForm.control}
-                          name="address"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Address</FormLabel>
-                              <FormControl>
-                                <Input placeholder="123 Main St." {...field} />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                          <FormField
+                            control={companyForm.control}
+                            name="address"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Address</FormLabel>
+                                <FormControl>
+                                  <Input placeholder="123 Main St" {...field} />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           <FormField
                             control={companyForm.control}
                             name="city"
@@ -539,7 +637,7 @@ export default function ProfilePage() {
                               <FormItem>
                                 <FormLabel>City</FormLabel>
                                 <FormControl>
-                                  <Input placeholder="San Francisco" {...field} />
+                                  <Input placeholder="New York" {...field} />
                                 </FormControl>
                                 <FormMessage />
                               </FormItem>
@@ -552,26 +650,9 @@ export default function ProfilePage() {
                             render={({ field }) => (
                               <FormItem>
                                 <FormLabel>Country</FormLabel>
-                                <Select
-                                  onValueChange={field.onChange}
-                                  defaultValue={field.value || ""}
-                                >
-                                  <FormControl>
-                                    <SelectTrigger>
-                                      <SelectValue placeholder="Select country" />
-                                    </SelectTrigger>
-                                  </FormControl>
-                                  <SelectContent>
-                                    <SelectItem value="US">United States</SelectItem>
-                                    <SelectItem value="DE">Germany</SelectItem>
-                                    <SelectItem value="GB">United Kingdom</SelectItem>
-                                    <SelectItem value="FR">France</SelectItem>
-                                    <SelectItem value="ES">Spain</SelectItem>
-                                    <SelectItem value="IT">Italy</SelectItem>
-                                    <SelectItem value="CA">Canada</SelectItem>
-                                    <SelectItem value="AU">Australia</SelectItem>
-                                  </SelectContent>
-                                </Select>
+                                <FormControl>
+                                  <Input placeholder="United States" {...field} />
+                                </FormControl>
                                 <FormMessage />
                               </FormItem>
                             )}
@@ -587,9 +668,7 @@ export default function ProfilePage() {
                     >
                       {companyMutation.isPending
                         ? "Saving..."
-                        : company
-                        ? "Update Company"
-                        : "Create Company"}
+                        : company ? "Update Company" : "Create Company"}
                     </Button>
                   </CardFooter>
                 </form>
@@ -603,80 +682,95 @@ export default function ProfilePage() {
               <CardHeader>
                 <CardTitle>Subscription</CardTitle>
                 <CardDescription>
-                  Manage your subscription plan and billing
+                  View and manage your subscription
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
                 {isLoadingSubscription ? (
-                  <div className="space-y-4">
-                    <Skeleton className="h-24 w-full" />
-                    <Skeleton className="h-32 w-full" />
-                  </div>
-                ) : !subscription ? (
-                  <div className="text-center py-6">
-                    <CreditCard className="h-12 w-12 mx-auto mb-4 text-neutral-400" />
-                    <h3 className="text-lg font-medium mb-2">No Active Subscription</h3>
-                    <p className="text-neutral-500 dark:text-neutral-400 mb-4">
-                      You don't have an active subscription plan yet
-                    </p>
-                    <Button>Choose a Plan</Button>
-                  </div>
-                ) : (
                   <>
-                    {/* Current Plan */}
-                    <Card className="bg-primary/5 border-primary/20">
-                      <CardContent className="pt-6">
-                        <div className="flex justify-between items-start">
-                          <div>
-                            <h3 className="text-xl font-semibold mb-1">
-                              {subscription.plan.name} Plan
-                            </h3>
-                            <p className="text-neutral-600 dark:text-neutral-400">
-                              {subscription.status === "active"
-                                ? `Renews on ${
-                                    subscription.endDate
-                                      ? new Date(
-                                          subscription.endDate
-                                        ).toLocaleDateString()
-                                      : "N/A"
-                                  }`
-                                : "Inactive"}
-                            </p>
-                          </div>
-                          <div className="text-right">
-                            <p className="text-2xl font-bold">
-                              ${subscription.plan.price}
-                              <span className="text-sm font-normal">/month</span>
-                            </p>
-                          </div>
+                    <Skeleton className="h-32 w-full rounded-md" />
+                    <Skeleton className="h-24 w-full rounded-md" />
+                  </>
+                ) : subscription ? (
+                  <>
+                    <div className="bg-primary/5 p-6 rounded-md">
+                      <h3 className="text-lg font-medium">Current Plan</h3>
+                      <div className="flex justify-between items-center mt-4">
+                        <div>
+                          <p className="text-2xl font-bold">{subscription.plan.name}</p>
+                          <p className="text-neutral-600 dark:text-neutral-400">
+                            Renews on {new Date(subscription.endDate).toLocaleDateString()}
+                          </p>
                         </div>
-                      </CardContent>
-                    </Card>
-
-                    {/* Plan Features */}
-                    <div>
-                      <h3 className="text-lg font-semibold mb-3">Plan Features</h3>
-                      <ul className="space-y-2">
-                        {subscription.plan.features &&
-                          JSON.parse(subscription.plan.features).map(
-                            (feature: string, index: number) => (
-                              <li key={index} className="flex items-center">
-                                <i className="ri-check-line text-success mr-2"></i>
-                                <span>{feature}</span>
-                              </li>
-                            )
-                          )}
-                      </ul>
+                        <div>
+                          <Button variant="outline">Manage Plan</Button>
+                        </div>
+                      </div>
                     </div>
 
-                    {/* Plan Options */}
-                    <div className="flex flex-col sm:flex-row gap-3">
-                      <Button variant="outline">Change Plan</Button>
-                      <Button variant="outline" className="text-destructive border-destructive">
-                        Cancel Subscription
-                      </Button>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <Card className="bg-muted/50">
+                        <CardHeader className="pb-2">
+                          <CardTitle className="text-base">Users</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <p className="text-2xl font-bold">
+                            {subscription.currentUsers} / {subscription.maxUsers}
+                          </p>
+                        </CardContent>
+                      </Card>
+                      
+                      <Card className="bg-muted/50">
+                        <CardHeader className="pb-2">
+                          <CardTitle className="text-base">Storage</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <p className="text-2xl font-bold">
+                            {subscription.storageUsed} / {subscription.storageLimit}
+                          </p>
+                        </CardContent>
+                      </Card>
+                      
+                      <Card className="bg-muted/50">
+                        <CardHeader className="pb-2">
+                          <CardTitle className="text-base">Reports</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <p className="text-2xl font-bold">
+                            {subscription.reportsUsed} / {subscription.reportsLimit}
+                          </p>
+                        </CardContent>
+                      </Card>
+                    </div>
+                    
+                    <div className="mt-4">
+                      <h3 className="text-lg font-medium mb-2">Payment Method</h3>
+                      <div className="flex items-center">
+                        <CreditCard className="h-5 w-5 mr-2" />
+                        <span>
+                          •••• •••• •••• {subscription.lastFourDigits || "1234"}
+                        </span>
+                        <Button variant="ghost" size="sm" className="ml-auto">
+                          Update
+                        </Button>
+                      </div>
                     </div>
                   </>
+                ) : (
+                  <div className="flex flex-col items-center justify-center py-10">
+                    <CreditCard className="h-12 w-12 mb-4 text-neutral-400" />
+                    <h3 className="text-lg font-medium">No Subscription Found</h3>
+                    <p className="text-neutral-600 dark:text-neutral-400 text-center mt-1 mb-4">
+                      You need to create a company before you can manage subscriptions.
+                    </p>
+                    <Button
+                      variant="outline"
+                      onClick={() => setActiveTab("company")}
+                      disabled={!user}
+                    >
+                      Set Up Company First
+                    </Button>
+                  </div>
                 )}
               </CardContent>
             </Card>
@@ -688,119 +782,74 @@ export default function ProfilePage() {
               <CardHeader>
                 <CardTitle>Security</CardTitle>
                 <CardDescription>
-                  Manage your account security settings
+                  Manage your password and security settings
                 </CardDescription>
               </CardHeader>
-              <CardContent className="space-y-6">
-                {/* Change Password */}
+              <CardContent>
+                <Form {...passwordForm}>
+                  <form onSubmit={passwordForm.handleSubmit(onPasswordSubmit)} className="space-y-6">
+                    <FormField
+                      control={passwordForm.control}
+                      name="currentPassword"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Current Password</FormLabel>
+                          <FormControl>
+                            <Input type="password" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    
+                    <FormField
+                      control={passwordForm.control}
+                      name="newPassword"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>New Password</FormLabel>
+                          <FormControl>
+                            <Input type="password" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    
+                    <FormField
+                      control={passwordForm.control}
+                      name="confirmPassword"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Confirm New Password</FormLabel>
+                          <FormControl>
+                            <Input type="password" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    
+                    <Button 
+                      type="submit"
+                      disabled={changePasswordMutation.isPending}
+                    >
+                      {changePasswordMutation.isPending
+                        ? "Changing Password..."
+                        : "Change Password"}
+                    </Button>
+                  </form>
+                </Form>
+                
+                <Separator className="my-8" />
+                
                 <div>
-                  <h3 className="text-lg font-semibold mb-3">Password</h3>
+                  <h3 className="text-lg font-medium mb-4">Two-Factor Authentication</h3>
                   <p className="text-neutral-600 dark:text-neutral-400 mb-4">
-                    Change your password to keep your account secure
+                    Add an extra layer of security to your account by enabling two-factor authentication.
                   </p>
-                  
-                  <Form {...passwordForm}>
-                    <form onSubmit={passwordForm.handleSubmit(onPasswordSubmit)} className="space-y-4">
-                      <FormField
-                        control={passwordForm.control}
-                        name="currentPassword"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Current Password</FormLabel>
-                            <FormControl>
-                              <Input type="password" placeholder="••••••••" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      
-                      <FormField
-                        control={passwordForm.control}
-                        name="newPassword"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>New Password</FormLabel>
-                            <FormControl>
-                              <Input type="password" placeholder="••••••••" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      
-                      <FormField
-                        control={passwordForm.control}
-                        name="confirmPassword"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Confirm New Password</FormLabel>
-                            <FormControl>
-                              <Input type="password" placeholder="••••••••" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      
-                      <Button 
-                        type="submit" 
-                        disabled={changePasswordMutation.isPending}
-                      >
-                        {changePasswordMutation.isPending ? (
-                          <>
-                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                            Updating Password...
-                          </>
-                        ) : (
-                          "Update Password"
-                        )}
-                      </Button>
-                    </form>
-                  </Form>
-                </div>
-
-                <Separator />
-
-                {/* Two-Factor Authentication */}
-                <div>
-                  <h3 className="text-lg font-semibold mb-3">
-                    Two-Factor Authentication
-                  </h3>
-                  <p className="text-neutral-600 dark:text-neutral-400 mb-4">
-                    Add an extra layer of security to your account
-                  </p>
-                  <Button variant="outline">Enable 2FA</Button>
-                </div>
-
-                <Separator />
-
-                {/* Session Management */}
-                <div>
-                  <h3 className="text-lg font-semibold mb-3">Active Sessions</h3>
-                  <p className="text-neutral-600 dark:text-neutral-400 mb-4">
-                    Manage your active sessions across devices
-                  </p>
-                  <Button 
-                    variant="outline" 
-                    className="text-destructive border-destructive"
-                    onClick={async () => {
-                      try {
-                        await supabase.auth.signOut({ scope: 'global' });
-                        toast({
-                          title: "All sessions signed out",
-                          description: "You have been signed out from all devices.",
-                        });
-                      } catch (error) {
-                        toast({
-                          title: "Error signing out sessions",
-                          description: "There was an error signing out from all devices.",
-                          variant: "destructive"
-                        });
-                      }
-                    }}
-                  >
-                    Sign Out All Devices
+                  <Button variant="outline">
+                    Enable 2FA
                   </Button>
                 </div>
               </CardContent>

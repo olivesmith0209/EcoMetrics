@@ -10,6 +10,31 @@ if (!supabaseUrl || !supabaseAnonKey) {
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
+// Create avatars bucket if it doesn't exist
+(async () => {
+  try {
+    // Check if the bucket exists
+    const { data: buckets } = await supabase.storage.listBuckets();
+    const avatarBucketExists = buckets?.some(bucket => bucket.name === 'avatars');
+    
+    // Create the bucket if it doesn't exist
+    if (!avatarBucketExists) {
+      const { data, error } = await supabase.storage.createBucket('avatars', {
+        public: true,
+        fileSizeLimit: 2 * 1024 * 1024, // 2MB
+      });
+      
+      if (error) {
+        console.error('Error creating avatars bucket:', error);
+      } else {
+        console.log('Avatars bucket created successfully');
+      }
+    }
+  } catch (error) {
+    console.error('Error initializing storage:', error);
+  }
+})();
+
 export type SupabaseUser = {
   id: string;
   email?: string;
