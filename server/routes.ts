@@ -379,16 +379,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Not authorized to update this user" });
       }
       
-      // Extract user data from request body
-      const userData = {
-        firstName: req.body.firstName,
-        lastName: req.body.lastName,
-        email: req.body.email,
-        language: req.body.language
-      };
+      // Extract user data from request body 
+      // Only include fields that are present in the request
+      const userData: Record<string, any> = {};
+      
+      if (req.body.firstName !== undefined) userData.firstName = req.body.firstName;
+      if (req.body.lastName !== undefined) userData.lastName = req.body.lastName;
+      if (req.body.email !== undefined) userData.email = req.body.email;
+      if (req.body.language !== undefined) userData.language = req.body.language;
+      
+      // Don't update if no data was provided
+      if (Object.keys(userData).length === 0) {
+        return res.status(400).json({ message: "No valid update fields provided" });
+      }
       
       const updatedUser = await storage.updateUser(userId, userData);
-      res.json(updatedUser);
+      
+      // Return a simplified user object to avoid any circular references
+      res.json({
+        id: updatedUser.id,
+        firstName: updatedUser.firstName,
+        lastName: updatedUser.lastName,
+        email: updatedUser.email,
+        language: updatedUser.language,
+        username: updatedUser.username,
+        companyId: updatedUser.companyId
+      });
     } catch (error) {
       console.error("Error updating user:", error);
       if (error instanceof z.ZodError) {

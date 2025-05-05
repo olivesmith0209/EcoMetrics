@@ -4,12 +4,14 @@ import { cn } from "@/lib/utils";
 import { SidebarItem } from "@/types";
 import { useAuth } from "@/hooks/use-auth";
 import { useMobile } from "@/hooks/use-mobile";
+import { useLanguage } from "@/hooks/use-language";
 import { useQuery } from "@tanstack/react-query";
 
 export function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
   const [location] = useLocation();
   const { user } = useAuth();
   const isMobile = useMobile();
+  const { t } = useLanguage();
   
   // Get active subscription
   const { data: subscription } = useQuery<any>({
@@ -29,23 +31,23 @@ export function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
   
   // Navigation items
   const mainNavItems: SidebarItem[] = [
-    { name: "Dashboard", icon: "ri-dashboard-line", path: "/" },
-    { name: "Reports", icon: "ri-file-chart-line", path: "/reports" },
-    { name: "Emissions", icon: "ri-leaf-line", path: "/emissions" },
-    { name: "Predictions", icon: "ri-rocket-line", path: "/predictions" },
+    { name: t('nav.dashboard'), icon: "ri-dashboard-line", path: "/" },
+    { name: t('nav.reports'), icon: "ri-file-chart-line", path: "/reports" },
+    { name: t('nav.emissions'), icon: "ri-leaf-line", path: "/emissions" },
+    { name: t('nav.predictions'), icon: "ri-rocket-line", path: "/predictions" },
   ];
   
   const dataNavItems: SidebarItem[] = [
-    { name: "Data Upload", icon: "ri-upload-cloud-line", path: "/upload" },
-    { name: "Integrations", icon: "ri-plug-line", path: "/integrations" },
-    { name: "History", icon: "ri-history-line", path: "/history" },
+    { name: t('nav.dataUpload'), icon: "ri-upload-cloud-line", path: "/upload" },
+    { name: t('nav.integrations'), icon: "ri-plug-line", path: "/integrations" },
+    { name: t('nav.history'), icon: "ri-history-line", path: "/history" },
   ];
   
   const settingsNavItems: SidebarItem[] = [
-    { name: "Profile", icon: "ri-user-settings-line", path: "/profile" },
-    { name: "Company", icon: "ri-building-line", path: "/company" },
-    { name: "Subscription", icon: "ri-vip-crown-line", path: "/subscription" },
-    { name: "Team Members", icon: "ri-team-line", path: "/team" },
+    { name: t('nav.profile'), icon: "ri-user-settings-line", path: "/profile" },
+    { name: t('nav.company'), icon: "ri-building-line", path: "/company" },
+    { name: t('nav.subscription'), icon: "ri-vip-crown-line", path: "/subscription" },
+    { name: t('nav.teamMembers'), icon: "ri-team-line", path: "/team" },
   ];
   
   // Render a navigation section
@@ -97,9 +99,9 @@ export function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
       >
         {/* Navigation Sections */}
         <nav className="px-3 py-4 flex-1">
-          {renderNavSection("Main", mainNavItems)}
-          {renderNavSection("Data", dataNavItems)}
-          {renderNavSection("Settings", settingsNavItems)}
+          {renderNavSection(t('nav.sections.main'), mainNavItems)}
+          {renderNavSection(t('nav.sections.data'), dataNavItems)}
+          {renderNavSection(t('nav.sections.settings'), settingsNavItems)}
         </nav>
         
         {/* Subscription Status */}
@@ -110,15 +112,15 @@ export function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
                 <i className="ri-vip-crown-fill text-accent text-xl"></i>
               </div>
               <div className="ml-3">
-                <h3 className="text-sm font-medium">{planName} Plan</h3>
+                <h3 className="text-sm font-medium">{planName} {t('subscription.plan')}</h3>
                 <p className="text-xs text-neutral-500 dark:text-neutral-400">
-                  Renews in {renewalDays} days
+                  {t('subscription.renewsIn', { days: renewalDays })}
                 </p>
               </div>
             </div>
             <div className="mt-3">
               <a href="/subscription" className="text-xs text-primary font-medium hover:text-primary-dark">
-                Upgrade to Enterprise →
+                {t('subscription.upgradeText')} →
               </a>
             </div>
           </div>
