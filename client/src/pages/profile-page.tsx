@@ -7,6 +7,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/lib/supabase";
+import { useLanguage, Language } from "@/hooks/use-language";
 import { Layout } from "@/components/layout/layout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -42,6 +43,7 @@ import { Camera, User, Building2, CreditCard, Shield, Languages, Loader2 } from 
 export default function ProfilePage() {
   const { user } = useAuth();
   const { toast } = useToast();
+  const { language, setLanguage, t } = useLanguage();
   const [activeTab, setActiveTab] = useState("profile");
 
   // Fetch company data if user has a company
@@ -193,6 +195,12 @@ export default function ProfilePage() {
 
   // Handle profile form submission
   const onProfileSubmit = (values: z.infer<typeof profileFormSchema>) => {
+    // Update the language in our context
+    if (values.language && values.language !== language) {
+      setLanguage(values.language as Language);
+    }
+    
+    // Update the profile in the database
     updateProfileMutation.mutate(values);
   };
 
@@ -251,9 +259,9 @@ export default function ProfilePage() {
       <div className="space-y-6">
         {/* Page Header */}
         <div>
-          <h1 className="text-2xl font-bold">Settings</h1>
+          <h1 className="text-2xl font-bold">{t('profile.title')}</h1>
           <p className="text-neutral-600 dark:text-neutral-400">
-            Manage your account settings and preferences
+            {t('profile.subtitle')}
           </p>
         </div>
 
@@ -262,19 +270,19 @@ export default function ProfilePage() {
           <TabsList className="mb-4">
             <TabsTrigger value="profile" className="flex items-center gap-2">
               <User className="h-4 w-4" />
-              <span>Profile</span>
+              <span>{t('profile.tabs.profile')}</span>
             </TabsTrigger>
             <TabsTrigger value="company" className="flex items-center gap-2">
               <Building2 className="h-4 w-4" />
-              <span>Company</span>
+              <span>{t('profile.tabs.company')}</span>
             </TabsTrigger>
             <TabsTrigger value="subscription" className="flex items-center gap-2">
               <CreditCard className="h-4 w-4" />
-              <span>Subscription</span>
+              <span>{t('profile.tabs.subscription')}</span>
             </TabsTrigger>
             <TabsTrigger value="security" className="flex items-center gap-2">
               <Shield className="h-4 w-4" />
-              <span>Security</span>
+              <span>{t('profile.tabs.security')}</span>
             </TabsTrigger>
           </TabsList>
 
@@ -282,9 +290,9 @@ export default function ProfilePage() {
           <TabsContent value="profile">
             <Card>
               <CardHeader>
-                <CardTitle>Profile Information</CardTitle>
+                <CardTitle>{t('profile.profileInfo')}</CardTitle>
                 <CardDescription>
-                  Update your personal information and preferences
+                  {t('profile.profileDesc')}
                 </CardDescription>
               </CardHeader>
               <Form {...profileForm}>
@@ -320,7 +328,7 @@ export default function ProfilePage() {
                         name="firstName"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>First Name</FormLabel>
+                            <FormLabel>{t('profile.firstName')}</FormLabel>
                             <FormControl>
                               <Input placeholder="John" {...field} />
                             </FormControl>
@@ -333,7 +341,7 @@ export default function ProfilePage() {
                         name="lastName"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Last Name</FormLabel>
+                            <FormLabel>{t('profile.lastName')}</FormLabel>
                             <FormControl>
                               <Input placeholder="Doe" {...field} />
                             </FormControl>
@@ -348,7 +356,7 @@ export default function ProfilePage() {
                       name="email"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Email</FormLabel>
+                          <FormLabel>{t('profile.email')}</FormLabel>
                           <FormControl>
                             <Input placeholder="john.doe@example.com" {...field} />
                           </FormControl>
@@ -362,10 +370,15 @@ export default function ProfilePage() {
                       name="language"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Language</FormLabel>
+                          <FormLabel>{t('profile.language')}</FormLabel>
                           <Select
-                            onValueChange={field.onChange}
+                            onValueChange={(value) => {
+                              field.onChange(value);
+                              // Set language immediately on change
+                              setLanguage(value as Language);
+                            }}
                             defaultValue={field.value}
+                            value={field.value}
                           >
                             <FormControl>
                               <SelectTrigger>
@@ -374,9 +387,9 @@ export default function ProfilePage() {
                             </FormControl>
                             <SelectContent>
                               <SelectItem value="en">English</SelectItem>
-                              <SelectItem value="de">German</SelectItem>
-                              <SelectItem value="fr">French</SelectItem>
-                              <SelectItem value="es">Spanish</SelectItem>
+                              <SelectItem value="de">Deutsch</SelectItem>
+                              <SelectItem value="fr">Français</SelectItem>
+                              <SelectItem value="es">Español</SelectItem>
                             </SelectContent>
                           </Select>
                           <FormMessage />
@@ -390,8 +403,8 @@ export default function ProfilePage() {
                       disabled={updateProfileMutation.isPending}
                     >
                       {updateProfileMutation.isPending
-                        ? "Saving..."
-                        : "Save Changes"}
+                        ? t('profile.saving')
+                        : t('profile.saveChanges')}
                     </Button>
                   </CardFooter>
                 </form>
