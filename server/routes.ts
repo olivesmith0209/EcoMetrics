@@ -645,18 +645,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get(`${apiPrefix}/support/tickets/:id/messages`, requireAuth, async (req, res) => {
     try {
       const ticketId = parseInt(req.params.id);
-      const ticket = await storage.getSupportTicketById(ticketId);
+      let ticket;
       
-      if (!ticket) {
-        return res.status(404).json({ message: "Ticket not found" });
+      try {
+        ticket = await supabaseSupport.getSupportTicketById(ticketId);
+        
+        // Verify ticket belongs to the user
+        if (!ticket || ticket.user_id !== req.user!.id) {
+          return res.status(403).json({ message: "Not authorized to access this ticket's messages" });
+        }
+      } catch (supabaseError) {
+        console.error("Supabase error fetching ticket, falling back to database:", supabaseError);
+        ticket = await storage.getSupportTicketById(ticketId);
+        
+        if (!ticket) {
+          return res.status(404).json({ message: "Ticket not found" });
+        }
+        
+        // Verify ticket belongs to the user
+        if (ticket.userId !== req.user!.id) {
+          return res.status(403).json({ message: "Not authorized to access this ticket's messages" });
+        }
       }
       
-      // Verify ticket belongs to the user
-      if (ticket.userId !== req.user!.id) {
-        return res.status(403).json({ message: "Not authorized to access this ticket's messages" });
+      // Get messages
+      let messages;
+      try {
+        messages = await supabaseSupport.getSupportMessages(ticketId);
+      } catch (messagesError) {
+        console.error("Supabase error fetching messages, falling back to database:", messagesError);
+        messages = await storage.getSupportMessages(ticketId);
       }
       
-      const messages = await storage.getSupportMessages(ticketId);
       res.json(messages);
     } catch (error) {
       console.error("Error fetching support messages:", error);
@@ -668,27 +688,56 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post(`${apiPrefix}/support/tickets/:id/messages`, requireAuth, async (req, res) => {
     try {
       const ticketId = parseInt(req.params.id);
-      const ticket = await storage.getSupportTicketById(ticketId);
+      let ticket;
       
-      if (!ticket) {
-        return res.status(404).json({ message: "Ticket not found" });
-      }
-      
-      // Verify ticket belongs to the user
-      if (ticket.userId !== req.user!.id) {
-        return res.status(403).json({ message: "Not authorized to add messages to this ticket" });
+      try {
+        ticket = await supabaseSupport.getSupportTicketById(ticketId);
+        
+        // Verify ticket belongs to the user (Supabase format)
+        if (!ticket || ticket.user_id !== req.user!.id) {
+          return res.status(403).json({ message: "Not authorized to add messages to this ticket" });
+        }
+      } catch (supabaseError) {
+        console.error("Supabase error fetching ticket, falling back to database:", supabaseError);
+        ticket = await storage.getSupportTicketById(ticketId);
+        
+        if (!ticket) {
+          return res.status(404).json({ message: "Ticket not found" });
+        }
+        
+        // Verify ticket belongs to the user
+        if (ticket.userId !== req.user!.id) {
+          return res.status(403).json({ message: "Not authorized to add messages to this ticket" });
+        }
       }
       
       const messageData = {
-        ticketId,
-        userId: req.user!.id,
+        ticket_id: ticketId,           // Supabase format
+        user_id: req.user!.id,         // Supabase format
         message: req.body.message,
-        isStaff: false
+        is_staff: false                // Supabase format
       };
       
-      // Create message
-      const validatedData = insertSupportMessageSchema.parse(messageData);
-      const message = await storage.createSupportMessage(validatedData);
+      // Try Supabase first, fall back to storage
+      let message;
+      try {
+        // Create message with Supabase
+        message = await supabaseSupport.createSupportMessage(messageData);
+      } catch (createError) {
+        console.error("Supabase error creating message, falling back to database:", createError);
+        
+        // Map to storage format
+        const storageMessageData = {
+          ticketId,
+          userId: req.user!.id,
+          message: req.body.message,
+          isStaff: false
+        };
+        
+        // Validate and create with storage
+        const validatedData = insertSupportMessageSchema.parse(storageMessageData);
+        message = await storage.createSupportMessage(validatedData);
+      }
       
       res.status(201).json(message);
     } catch (error) {
@@ -711,7 +760,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (categoryId) filters.categoryId = parseInt(categoryId as string);
       if (published !== undefined) filters.isPublished = published === 'true';
       
-      const articles = await supabaseSupport.getHelpArticles(filters);
+      let articles;
+      try {
+        articles = await supabaseSupport.getHelpArticles(filters);
+      } catch (supabaseError) {
+        console.error("Supabase error fetching articles, falling back to database:", supabaseError);
+        articles = await storage.getHelpArticles(filters);
+      }
+      
       res.json(articles);
     } catch (error) {
       console.error("Error fetching help articles:", error);
@@ -723,14 +779,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get(`${apiPrefix}/help/articles/:slug`, async (req, res) => {
     try {
       const slug = req.params.slug;
-      const article = await storage.getHelpArticleBySlug(slug);
+      let article;
+      
+      try {
+        article = await supabaseSupport.getHelpArticleBySlug(slug);
+      } catch (supabaseError) {
+        console.error("Supabase error fetching article, falling back to database:", supabaseError);
+        article = await storage.getHelpArticleBySlug(slug);
+      }
       
       if (!article) {
         return res.status(404).json({ message: "Article not found" });
       }
       
       // Increment view counter
-      await storage.incrementArticleViews(article.id);
+      try {
+        await supabaseSupport.incrementArticleViews(article.id);
+      } catch (viewError) {
+        console.error("Error incrementing article views with Supabase, using fallback:", viewError);
+        await storage.incrementArticleViews(article.id);
+      }
       
       res.json(article);
     } catch (error) {
