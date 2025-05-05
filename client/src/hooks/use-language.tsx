@@ -88,6 +88,16 @@ const translations: Translations = {
     "nav.reports": "Reports",
     "nav.profile": "Profile",
     "nav.logout": "Logout",
+    "nav.predictions": "Predictions",
+    "nav.dataUpload": "Data Upload",
+    "nav.integrations": "Integrations",
+    "nav.history": "History",
+    "nav.company": "Company",
+    "nav.subscription": "Subscription",
+    "nav.teamMembers": "Team Members",
+    "nav.sections.main": "Main",
+    "nav.sections.data": "Data",
+    "nav.sections.settings": "Settings",
     
     // Emissions
     "emissions.title": "Emissions",
@@ -198,6 +208,21 @@ const translations: Translations = {
     "nav.reports": "Berichte",
     "nav.profile": "Profil",
     "nav.logout": "Abmelden",
+    "nav.predictions": "Vorhersagen",
+    "nav.dataUpload": "Daten-Upload",
+    "nav.integrations": "Integrationen",
+    "nav.history": "Verlauf",
+    "nav.company": "Unternehmen",
+    "nav.subscription": "Abonnement",
+    "nav.teamMembers": "Teammitglieder",
+    "nav.sections.main": "Hauptmenü",
+    "nav.sections.data": "Daten",
+    "nav.sections.settings": "Einstellungen",
+    
+    // Subscription additional keys
+    "subscription.plan": "Plan",
+    "subscription.renewsIn": "Verlängert in {{days}} Tagen",
+    "subscription.upgradeText": "Auf Enterprise upgraden",
     
     // Emissions
     "emissions.title": "Emissionen",
@@ -459,7 +484,7 @@ const translations: Translations = {
 interface LanguageContextType {
   language: Language;
   setLanguage: (language: Language) => void;
-  t: (key: string) => string;
+  t: (key: string, params?: Record<string, any>) => string;
 }
 
 // Create context
@@ -484,13 +509,21 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
     document.documentElement.lang = language;
   }, [language]);
 
-  // Translation function
-  const t = (key: string): string => {
-    const translation = translations[language]?.[key];
+  // Translation function with parameter support
+  const t = (key: string, params?: Record<string, any>): string => {
+    let translation = translations[language]?.[key];
     if (!translation) {
       console.warn(`Translation missing for key: ${key} in language: ${language}`);
       return key;
     }
+    
+    // Replace parameters in the translation string like {{paramName}}
+    if (params) {
+      Object.entries(params).forEach(([paramKey, paramValue]) => {
+        translation = translation.replace(`{{${paramKey}}}`, String(paramValue));
+      });
+    }
+    
     return translation;
   };
 
