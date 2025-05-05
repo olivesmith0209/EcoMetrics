@@ -235,3 +235,117 @@ export type InsertReport = z.infer<typeof insertReportSchema>;
 
 export type SubscriptionPlan = typeof subscriptionPlans.$inferSelect;
 export type Subscription = typeof subscriptions.$inferSelect;
+
+// Support ticket and helpdesk schemas
+export const supportCategories = pgTable('support_categories', {
+  id: serial('id').primaryKey(),
+  name: text('name').notNull(),
+  description: text('description'),
+  icon: text('icon'),
+  createdAt: timestamp('created_at').defaultNow().notNull()
+});
+
+export const supportTickets = pgTable('support_tickets', {
+  id: serial('id').primaryKey(),
+  userId: integer('user_id').references(() => users.id).notNull(),
+  companyId: integer('company_id').references(() => companies.id),
+  categoryId: integer('category_id').references(() => supportCategories.id),
+  subject: text('subject').notNull(),
+  status: text('status').notNull().default('open'),
+  priority: text('priority').notNull().default('medium'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  closedAt: timestamp('closed_at')
+});
+
+export const supportMessages = pgTable('support_messages', {
+  id: serial('id').primaryKey(),
+  ticketId: integer('ticket_id').references(() => supportTickets.id).notNull(),
+  userId: integer('user_id').references(() => users.id).notNull(),
+  isStaff: boolean('is_staff').default(false).notNull(),
+  message: text('message').notNull(),
+  attachmentUrl: text('attachment_url'),
+  createdAt: timestamp('created_at').defaultNow().notNull()
+});
+
+export const helpArticles = pgTable('help_articles', {
+  id: serial('id').primaryKey(),
+  categoryId: integer('category_id').references(() => supportCategories.id),
+  title: text('title').notNull(),
+  content: text('content').notNull(),
+  slug: text('slug').notNull().unique(),
+  isPublished: boolean('is_published').default(true).notNull(),
+  views: integer('views').default(0).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull()
+});
+
+// Relations for support tables
+export const supportCategoriesRelations = relations(supportCategories, ({ many }) => ({
+  tickets: many(supportTickets),
+  articles: many(helpArticles)
+}));
+
+export const supportTicketsRelations = relations(supportTickets, ({ one, many }) => ({
+  user: one(users, { fields: [supportTickets.userId], references: [users.id] }),
+  company: one(companies, { fields: [supportTickets.companyId], references: [companies.id] }),
+  category: one(supportCategories, { fields: [supportTickets.categoryId], references: [supportCategories.id] }),
+  messages: many(supportMessages)
+}));
+
+export const supportMessagesRelations = relations(supportMessages, ({ one }) => ({
+  ticket: one(supportTickets, { fields: [supportMessages.ticketId], references: [supportTickets.id] }),
+  user: one(users, { fields: [supportMessages.userId], references: [users.id] })
+}));
+
+export const helpArticlesRelations = relations(helpArticles, ({ one }) => ({
+  category: one(supportCategories, { fields: [helpArticles.categoryId], references: [supportCategories.id] })
+}));
+
+// Validation schemas for support tables
+export const insertSupportCategorySchema = createInsertSchema(supportCategories);
+export const supportCategoryValidationSchema = z.object({
+  name: z.string().min(2, "Name must be at least 2 characters"),
+  description: z.string().optional(),
+  icon: z.string().optional()
+});
+
+export const insertSupportTicketSchema = createInsertSchema(supportTickets);
+export const supportTicketValidationSchema = z.object({
+  userId: z.number().int().positive(),
+  companyId: z.number().int().positive().optional(),
+  categoryId: z.number().int().positive().optional(),
+  subject: z.string().min(5, "Subject must be at least 5 characters"),
+  status: z.enum(['open', 'in_progress', 'waiting_customer', 'resolved', 'closed']).default('open'),
+  priority: z.enum(['low', 'medium', 'high', 'urgent']).default('medium')
+});
+
+export const insertSupportMessageSchema = createInsertSchema(supportMessages);
+export const supportMessageValidationSchema = z.object({
+  ticketId: z.number().int().positive(),
+  userId: z.number().int().positive(),
+  isStaff: z.boolean().default(false),
+  message: z.string().min(1, "Message is required"),
+  attachmentUrl: z.string().optional()
+});
+
+export const insertHelpArticleSchema = createInsertSchema(helpArticles);
+export const helpArticleValidationSchema = z.object({
+  categoryId: z.number().int().positive().optional(),
+  title: z.string().min(5, "Title must be at least 5 characters"),
+  content: z.string().min(50, "Content must be at least 50 characters"),
+  slug: z.string().min(3, "Slug must be at least 3 characters"),
+  isPublished: z.boolean().default(true)
+});
+
+export type SupportCategory = typeof supportCategories.$inferSelect;
+export type InsertSupportCategory = z.infer<typeof insertSupportCategorySchema>;
+
+export type SupportTicket = typeof supportTickets.$inferSelect;
+export type InsertSupportTicket = z.infer<typeof insertSupportTicketSchema>;
+
+export type SupportMessage = typeof supportMessages.$inferSelect;
+export type InsertSupportMessage = z.infer<typeof insertSupportMessageSchema>;
+
+export type HelpArticle = typeof helpArticles.$inferSelect;
+export type InsertHelpArticle = z.infer<typeof insertHelpArticleSchema>;

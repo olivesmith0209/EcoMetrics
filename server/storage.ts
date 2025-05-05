@@ -5,9 +5,11 @@ import {
   emissions, insertEmissionSchema,
   emissionCategories,
   reports, insertReportSchema,
-  subscriptionPlans, subscriptions
+  subscriptionPlans, subscriptions,
+  supportCategories, supportTickets, supportMessages, helpArticles,
+  insertSupportTicketSchema, insertSupportMessageSchema
 } from "@shared/schema";
-import { eq, desc, and, between, gte, lte } from "drizzle-orm";
+import { eq, desc, and, between, gte, lte, asc, sql } from "drizzle-orm";
 import session from "express-session";
 import connectPg from "connect-pg-simple";
 import { pool } from "@db";
@@ -44,6 +46,21 @@ export interface IStorage {
   // Subscription methods
   getSubscriptionPlans: () => Promise<any[]>;
   getCompanySubscription: (companyId: number) => Promise<any>;
+  
+  // Support methods
+  getSupportCategories: () => Promise<any[]>;
+  getSupportTickets: (userId: number, filters?: { status?: string }) => Promise<any[]>;
+  getSupportTicketById: (id: number) => Promise<any>;
+  createSupportTicket: (ticketData: any) => Promise<any>;
+  updateSupportTicket: (id: number, ticketData: any) => Promise<any>;
+  getSupportMessages: (ticketId: number) => Promise<any[]>;
+  createSupportMessage: (messageData: any) => Promise<any>;
+  
+  // Help articles methods
+  getHelpArticles: (filters?: { categoryId?: number, isPublished?: boolean }) => Promise<any[]>;
+  getHelpArticleBySlug: (slug: string) => Promise<any>;
+  getHelpArticleById: (id: number) => Promise<any>;
+  incrementArticleViews: (id: number) => Promise<any>;
   
   // Session store
   sessionStore: session.SessionStore;
@@ -250,6 +267,166 @@ class DatabaseStorage implements IStorage {
         plan: true
       }
     });
+  }
+
+  // Support methods
+  async getSupportCategories() {
+    return await db.query.supportCategories.findMany();
+  }
+
+  async getSupportTickets(userId: number, filters?: { status?: string }) {
+    let query = db.query.supportTickets.findMany({
+      where: eq(supportTickets.userId, userId),
+      with: {
+        category: true,
+        user: true
+      },
+      orderBy: [
+        desc(supportTickets.updatedAt),
+        desc(supportTickets.createdAt)
+      ]
+    });
+
+    // Apply status filter if provided
+    if (filters?.status) {
+      query = db.query.supportTickets.findMany({
+        where: and(
+          eq(supportTickets.userId, userId),
+          eq(supportTickets.status, filters.status)
+        ),
+        with: {
+          category: true,
+          user: true
+        },
+        orderBy: [
+          desc(supportTickets.updatedAt),
+          desc(supportTickets.createdAt)
+        ]
+      });
+    }
+
+    return await query;
+  }
+
+  async getSupportTicketById(id: number) {
+    return await db.query.supportTickets.findFirst({
+      where: eq(supportTickets.id, id),
+      with: {
+        category: true,
+        user: true,
+        messages: {
+          with: {
+            user: true
+          },
+          orderBy: asc(supportMessages.createdAt)
+        }
+      }
+    });
+  }
+
+  async createSupportTicket(ticketData: any) {
+    const validatedData = insertSupportTicketSchema.parse(ticketData);
+    const [ticket] = await db.insert(supportTickets).values(validatedData).returning();
+    return ticket;
+  }
+
+  async updateSupportTicket(id: number, ticketData: any) {
+    const [updatedTicket] = await db.update(supportTickets)
+      .set({ ...ticketData, updatedAt: new Date() })
+      .where(eq(supportTickets.id, id))
+      .returning();
+    return updatedTicket;
+  }
+
+  async getSupportMessages(ticketId: number) {
+    return await db.query.supportMessages.findMany({
+      where: eq(supportMessages.ticketId, ticketId),
+      with: {
+        user: true
+      },
+      orderBy: asc(supportMessages.createdAt)
+    });
+  }
+
+  async createSupportMessage(messageData: any) {
+    const validatedData = insertSupportMessageSchema.parse(messageData);
+    const [message] = await db.insert(supportMessages).values(validatedData).returning();
+    
+    // Update the ticket's updatedAt timestamp
+    await db.update(supportTickets)
+      .set({ updatedAt: new Date() })
+      .where(eq(supportTickets.id, messageData.ticketId));
+    
+    return message;
+  }
+
+  // Help articles methods
+  async getHelpArticles(filters?: { categoryId?: number, isPublished?: boolean }) {
+    let query = db.query.helpArticles.findMany({
+      with: {
+        category: true
+      },
+      orderBy: [
+        desc(helpArticles.updatedAt),
+        desc(helpArticles.createdAt)
+      ]
+    });
+
+    // Apply filters if provided
+    if (filters) {
+      let conditions = [];
+      
+      if (filters.categoryId) {
+        conditions.push(eq(helpArticles.categoryId, filters.categoryId));
+      }
+      
+      if (filters.isPublished !== undefined) {
+        conditions.push(eq(helpArticles.isPublished, filters.isPublished));
+      }
+
+      if (conditions.length > 0) {
+        query = db.query.helpArticles.findMany({
+          where: and(...conditions),
+          with: {
+            category: true
+          },
+          orderBy: [
+            desc(helpArticles.updatedAt),
+            desc(helpArticles.createdAt)
+          ]
+        });
+      }
+    }
+
+    return await query;
+  }
+
+  async getHelpArticleBySlug(slug: string) {
+    return await db.query.helpArticles.findFirst({
+      where: eq(helpArticles.slug, slug),
+      with: {
+        category: true
+      }
+    });
+  }
+
+  async getHelpArticleById(id: number) {
+    return await db.query.helpArticles.findFirst({
+      where: eq(helpArticles.id, id),
+      with: {
+        category: true
+      }
+    });
+  }
+
+  async incrementArticleViews(id: number) {
+    const [article] = await db.update(helpArticles)
+      .set({
+        views: sql`${helpArticles.views} + 1`
+      })
+      .where(eq(helpArticles.id, id))
+      .returning();
+    return article;
   }
 }
 
