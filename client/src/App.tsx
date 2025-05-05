@@ -7,6 +7,8 @@ import AuthPage from "@/pages/auth-page";
 import EmissionsPage from "@/pages/emissions-page";
 import ReportsPage from "@/pages/reports-page";
 import ProfilePage from "@/pages/profile-page";
+import SupportPage from "@/pages/support-page";
+import HelpArticlePage from "@/pages/help-article-page";
 
 function Router() {
   return (
@@ -15,6 +17,8 @@ function Router() {
       <ProtectedRoute path="/emissions" component={EmissionsPage} />
       <ProtectedRoute path="/reports" component={ReportsPage} />
       <ProtectedRoute path="/profile" component={ProfilePage} />
+      <ProtectedRoute path="/support" component={SupportPage} />
+      <ProtectedRoute path="/help/article/:slug" component={HelpArticlePage} />
       <Route path="/auth" component={AuthPage} />
       <Route component={NotFound} />
     </Switch>
