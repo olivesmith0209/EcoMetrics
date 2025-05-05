@@ -10,8 +10,8 @@ export async function createSupportCategoriesTable() {
     .select('count')
     .limit(1);
     
-  // If there's an error other than 'relation does not exist', log it
-  if (checkError && !checkError.message.includes('relation "support_categories" does not exist')) {
+  // If there's an error, log it - it's likely that the table doesn't exist
+  if (checkError) {
     console.error('Error checking support_categories table:', checkError);
   }
   
@@ -29,7 +29,7 @@ export async function createSupportCategoriesTable() {
       .select()
       .maybeSingle();
       
-    if (error && !error.message.includes('already exists')) {
+    if (error) {
       console.error('Error creating support_categories table:', error);
     } else {
       console.log('Support categories table initialized successfully');
@@ -49,8 +49,8 @@ export async function createSupportTicketsTable() {
     .select('count')
     .limit(1);
     
-  // If there's an error other than 'relation does not exist', log it
-  if (checkError && !checkError.message.includes('relation "support_tickets" does not exist')) {
+  // If there's an error, log it - it's likely that the table doesn't exist
+  if (checkError) {
     console.error('Error checking support_tickets table:', checkError);
   }
   
@@ -63,7 +63,7 @@ export async function createSupportTicketsTable() {
       .limit(1)
       .single();
       
-    if (catError && !catError.message.includes('No rows found')) {
+    if (catError) {
       console.error('Error getting category for support_tickets table initialization:', catError);
     }
       
@@ -80,8 +80,7 @@ export async function createSupportTicketsTable() {
         ...(categoryId && { category_id: categoryId })
       });
       
-    // It's okay if this fails with "already exists"
-    if (error && !error.message.includes('already exists')) {
+    if (error) {
       console.error('Error creating support_tickets table:', error);
     } else {
       console.log('Support tickets table initialized successfully');
@@ -111,8 +110,8 @@ export async function createSupportMessagesTable() {
     .select('count')
     .limit(1);
     
-  // If there's an error other than 'relation does not exist', log it
-  if (checkError && !checkError.message.includes('relation "support_messages" does not exist')) {
+  // If there's an error, log it - it's likely that the table doesn't exist
+  if (checkError) {
     console.error('Error checking support_messages table:', checkError);
   }
   
@@ -125,7 +124,7 @@ export async function createSupportMessagesTable() {
       .limit(1)
       .single();
       
-    if (ticketError && !ticketError.message.includes('No rows found')) {
+    if (ticketError) {
       console.error('Error getting ticket for support_messages table initialization:', ticketError);
     }
     
@@ -172,8 +171,8 @@ export async function createHelpArticlesTable() {
     .select('count')
     .limit(1);
     
-  // If there's an error other than 'relation does not exist', log it
-  if (checkError && !checkError.message.includes('relation "help_articles" does not exist')) {
+  // If there's an error, log it - it's likely that the table doesn't exist
+  if (checkError) {
     console.error('Error checking help_articles table:', checkError);
   }
   
@@ -186,7 +185,7 @@ export async function createHelpArticlesTable() {
       .limit(1)
       .single();
       
-    if (catError && !catError.message.includes('No rows found')) {
+    if (catError) {
       console.error('Error getting category for help_articles table initialization:', catError);
     }
     
