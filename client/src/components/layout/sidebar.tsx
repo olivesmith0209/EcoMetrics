@@ -43,6 +43,11 @@ export function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
     { name: t('nav.history'), icon: "ri-history-line", path: "/history" },
   ];
   
+  const supportNavItems: SidebarItem[] = [
+    { name: "Support Center", icon: "ri-customer-service-line", path: "/support" },
+    { name: "Help Articles", icon: "ri-book-open-line", path: "/help" },
+  ];
+  
   const settingsNavItems: SidebarItem[] = [
     { name: t('nav.profile'), icon: "ri-user-settings-line", path: "/profile" },
     { name: t('nav.company'), icon: "ri-building-line", path: "/company" },
@@ -101,6 +106,7 @@ export function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
         <nav className="px-3 py-4 flex-1">
           {renderNavSection(t('nav.sections.main'), mainNavItems)}
           {renderNavSection(t('nav.sections.data'), dataNavItems)}
+          {renderNavSection("Support", supportNavItems)}
           {renderNavSection(t('nav.sections.settings'), settingsNavItems)}
         </nav>
         

@@ -8,6 +8,7 @@ import EmissionsPage from "@/pages/emissions-page";
 import ReportsPage from "@/pages/reports-page";
 import ProfilePage from "@/pages/profile-page";
 import SupportPage from "@/pages/support-page";
+import HelpPage from "@/pages/help-page";
 import HelpArticlePage from "@/pages/help-article-page";
 
 function Router() {
@@ -18,6 +19,7 @@ function Router() {
       <ProtectedRoute path="/reports" component={ReportsPage} />
       <ProtectedRoute path="/profile" component={ProfilePage} />
       <ProtectedRoute path="/support" component={SupportPage} />
+      <ProtectedRoute path="/help" component={HelpPage} />
       <ProtectedRoute path="/help/article/:slug" component={HelpArticlePage} />
       <Route path="/auth" component={AuthPage} />
       <Route component={NotFound} />
