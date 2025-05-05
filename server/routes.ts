@@ -524,7 +524,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get support categories
   app.get(`${apiPrefix}/support/categories`, requireAuth, async (req, res) => {
     try {
-      const categories = await storage.getSupportCategories();
+      const categories = await supabaseSupport.getSupportCategories();
       res.json(categories);
     } catch (error) {
       console.error("Error fetching support categories:", error);
@@ -540,7 +540,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const filters: any = {};
       if (status) filters.status = status as string;
       
-      const tickets = await storage.getSupportTickets(req.user!.id, filters);
+      const tickets = await supabaseSupport.getSupportTickets(req.user!.id, filters);
       res.json(tickets);
     } catch (error) {
       console.error("Error fetching support tickets:", error);
@@ -552,14 +552,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get(`${apiPrefix}/support/tickets/:id`, requireAuth, async (req, res) => {
     try {
       const ticketId = parseInt(req.params.id);
-      const ticket = await storage.getSupportTicketById(ticketId);
+      const ticket = await supabaseSupport.getSupportTicketById(ticketId);
       
       if (!ticket) {
         return res.status(404).json({ message: "Ticket not found" });
       }
       
       // Verify ticket belongs to the user
-      if (ticket.userId !== req.user!.id) {
+      if (ticket.user_id !== req.user!.id) {
         return res.status(403).json({ message: "Not authorized to access this ticket" });
       }
       
@@ -711,7 +711,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (categoryId) filters.categoryId = parseInt(categoryId as string);
       if (published !== undefined) filters.isPublished = published === 'true';
       
-      const articles = await storage.getHelpArticles(filters);
+      const articles = await supabaseSupport.getHelpArticles(filters);
       res.json(articles);
     } catch (error) {
       console.error("Error fetching help articles:", error);

@@ -139,8 +139,7 @@ export async function createSupportMessagesTable() {
           message: 'Table Initialization'
         });
         
-      // It's okay if this fails with "already exists"
-      if (error && !error.message.includes('already exists')) {
+      if (error) {
         console.error('Error creating support_messages table:', error);
       } else {
         console.log('Support messages table initialized successfully');
@@ -202,8 +201,7 @@ export async function createHelpArticlesTable() {
         ...(categoryId && { category_id: categoryId })
       });
       
-    // It's okay if this fails with "already exists"
-    if (error && !error.message.includes('already exists')) {
+    if (error) {
       console.error('Error creating help_articles table:', error);
     } else {
       console.log('Help articles table initialized successfully');
