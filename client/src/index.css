@@ -1,0 +1,188 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Base colors */
+    --background: 0 0% 98%;
+    --foreground: 240 10% 3.9%;
+    
+    /* Card colors */
+    --card: 0 0% 100%;
+    --card-foreground: 240 10% 3.9%;
+    
+    /* Popover colors */
+    --popover: 0 0% 100%;
+    --popover-foreground: 240 10% 3.9%;
+
+    /* Border colors */
+    --border: 220 13% 91%;
+    --input: 220 13% 91%;
+    
+    /* Primary colors - Apple Blue */
+    --primary: 211 100% 50%;
+    --primary-foreground: 0 0% 100%;
+    
+    /* Secondary colors - Apple Green */
+    --secondary: 142 59% 51%;
+    --secondary-foreground: 0 0% 100%;
+    
+    /* Accent colors - Apple Orange */
+    --accent: 35 100% 50%;
+    --accent-foreground: 0 0% 100%;
+    
+    /* UI colors */
+    --muted: 220 14.3% 95.9%;
+    --muted-foreground: 220 8.9% 46.1%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+    
+    /* Other UI elements */
+    --ring: 211 100% 50%;
+    
+    /* Status colors */
+    --success: 142 59% 51%;
+    --danger: 4 90% 58%;
+    --warning: 48 96% 53%;
+    --info: 199 89% 70%;
+    
+    /* Chart colors */
+    --chart-1: 211 100% 50%;
+    --chart-2: 142 59% 51%;
+    --chart-3: 35 100% 50%;
+    --chart-4: 199 89% 70%;
+    --chart-5: 4 90% 58%;
+    
+    /* Sidebar colors */
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 240 10% 3.9%;
+    --sidebar-primary: 211 100% 50%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 35 100% 50%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 220 13% 91%;
+    --sidebar-ring: 211 100% 50%;
+
+    /* Radius */
+    --radius: 0.5rem;
+  }
+
+  .dark {
+    --background: 240 10% 3.9%;
+    --foreground: 0 0% 98%;
+    
+    --card: 240 10% 8%;
+    --card-foreground: 0 0% 98%;
+    
+    --popover: 240 10% 8%;
+    --popover-foreground: 0 0% 98%;
+    
+    --border: 240 3.7% 15.9%;
+    --input: 240 3.7% 15.9%;
+    
+    --primary: 211 100% 50%;
+    --primary-foreground: 0 0% 100%;
+    
+    --secondary: 142 59% 51%;
+    --secondary-foreground: 0 0% 100%;
+    
+    --accent: 35 100% 50%;
+    --accent-foreground: 0 0% 100%;
+    
+    --muted: 240 3.7% 15.9%;
+    --muted-foreground: 240 5% 64.9%;
+    
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 98%;
+    
+    --ring: 211 100% 50%;
+    
+    /* Dark mode status colors - same as light mode for consistency */
+    --success: 142 59% 51%;
+    --danger: 4 90% 58%;
+    --warning: 48 96% 53%;
+    --info: 199 89% 70%;
+    
+    /* Dark mode chart colors - same as light for consistency */
+    --chart-1: 211 100% 50%;
+    --chart-2: 142 59% 51%;
+    --chart-3: 35 100% 50%;
+    --chart-4: 199 89% 70%;
+    --chart-5: 4 90% 58%;
+    
+    /* Dark mode sidebar */
+    --sidebar-background: 240 10% 8%;
+    --sidebar-foreground: 0 0% 98%;
+    --sidebar-primary: 211 100% 50%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 35 100% 50%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 240 3.7% 15.9%;
+    --sidebar-ring: 211 100% 50%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply font-sans antialiased bg-background text-foreground;
+  }
+}
+
+/* Custom scrollbar styling */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-neutral-500 rounded-sm;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-neutral-600;
+}
+
+/* Fix for subscription badge in sidebar */
+.subscription-badge {
+  @apply bg-white dark:bg-[#2C2C2E] rounded-lg p-3 shadow-sm border border-neutral-200 dark:border-neutral-700;
+}
+
+/* Fix for floating action button */
+.floating-action-btn {
+  @apply bg-primary hover:bg-primary/90 text-white w-14 h-14 rounded-full shadow-lg flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary;
+}
+
+/* Fix for status badges */
+.status-badge {
+  @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
+}
+
+.status-verified {
+  @apply bg-success/10 text-success;
+}
+
+.status-pending {
+  @apply bg-warning/10 text-warning;
+}
+
+.status-review {
+  @apply bg-danger/10 text-danger;
+}
+
+/* Fix for recommendation cards */
+.recommendation-card {
+  @apply p-3 rounded-lg bg-neutral-50 dark:bg-neutral-800/50 border border-neutral-200 dark:border-neutral-700;
+}
+
+.recommendation-icon {
+  @apply flex-shrink-0 h-8 w-8 rounded-full flex items-center justify-center;
+}
