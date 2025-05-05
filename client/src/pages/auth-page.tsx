@@ -27,20 +27,22 @@ import { Loader2 } from "lucide-react";
 
 export default function AuthPage() {
   const [activeTab, setActiveTab] = useState("login");
-  const { user, loginMutation, registerMutation } = useAuth();
+  const { user, supabaseUser, loginMutation, registerMutation } = useAuth();
   const [location, navigate] = useLocation();
 
   // Redirect if already logged in
   useEffect(() => {
-    if (user) {
+    if (supabaseUser || user) {
       navigate("/");
     }
-  }, [user, navigate]);
+  }, [supabaseUser, user, navigate]);
 
   // Login form schema
   const loginSchema = z.object({
-    username: z.string().min(1, "Username is required"),
-    password: z.string().min(1, "Password is required"),
+    email: z.string()
+      .email("Please enter a valid email address"),
+    password: z.string()
+      .min(1, "Password is required"),
   });
 
   // Register form schema
@@ -60,7 +62,7 @@ export default function AuthPage() {
   const loginForm = useForm<z.infer<typeof loginSchema>>({
     resolver: zodResolver(loginSchema),
     defaultValues: {
-      username: "",
+      email: "",
       password: "",
     },
   });
@@ -124,12 +126,16 @@ export default function AuthPage() {
                     >
                       <FormField
                         control={loginForm.control}
-                        name="username"
+                        name="email"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Username</FormLabel>
+                            <FormLabel>Email</FormLabel>
                             <FormControl>
-                              <Input placeholder="johndoe" {...field} />
+                              <Input
+                                type="email"
+                                placeholder="your.email@example.com"
+                                {...field}
+                              />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
