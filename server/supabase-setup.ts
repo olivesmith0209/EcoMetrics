@@ -43,63 +43,35 @@ export async function createSupportCategoriesTable() {
 
 // Create support tickets table
 export async function createSupportTicketsTable() {
-  // Check if table exists first
-  const { error: checkError } = await supabase
-    .from('support_tickets')
-    .select('count')
-    .limit(1);
-    
-  // If there's an error, log it - it's likely that the table doesn't exist
-  if (checkError) {
-    console.error('Error checking support_tickets table:', checkError);
-  }
-  
-  // Try to create the table by inserting a record (this will automatically create the table with appropriate schema)
   try {
-    // First get a category id to use as foreign key
-    const { data: category, error: catError } = await supabase
-      .from('support_categories')
-      .select('id')
-      .limit(1)
-      .single();
-      
-    if (catError) {
-      console.error('Error getting category for support_tickets table initialization:', catError);
-    }
-      
-    const categoryId = category?.id;
-    
-    // Try to insert a record to create the table
-    const { error } = await supabase
-      .from('support_tickets')
-      .insert({
-        user_id: 1,
-        subject: 'Table Initialization',
-        status: 'open',
-        priority: 'medium',
-        ...(categoryId && { category_id: categoryId })
-      });
-      
+    const { data, error } = await supabase.rpc('execute_sql', {
+      query: `
+        CREATE TABLE IF NOT EXISTS public.support_tickets (
+          id SERIAL PRIMARY KEY,
+          title VARCHAR(255) NOT NULL,
+          status VARCHAR(50) NOT NULL,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+        
+        CREATE TABLE IF NOT EXISTS public.support_messages (
+          id SERIAL PRIMARY KEY,
+          ticket_id INT REFERENCES public.support_tickets (id),
+          message TEXT NOT NULL,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+      `
+    });
+
     if (error) {
-      console.error('Error creating support_tickets table:', error);
+      console.error('Error creating support tables:', error);
     } else {
-      console.log('Support tickets table initialized successfully');
-      
-      // Clean up the test record if created
-      try {
-        await supabase
-          .from('support_tickets')
-          .delete()
-          .eq('subject', 'Table Initialization');
-      } catch (cleanupError) {
-        console.error('Error cleaning up test ticket:', cleanupError);
-      }
+      console.log('Support tables created successfully');
     }
   } catch (err) {
-    console.error('Error during support_tickets table creation attempt:', err);
+    console.error('Error during support tables creation:', err);
   }
   
-  console.log('Support tickets table setup complete');
+  console.log('Support tables setup complete');
 }
 
 // Create support messages table
