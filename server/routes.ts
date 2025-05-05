@@ -14,7 +14,7 @@ const upload = multer({
       // Create uploads directory if it doesn't exist
       const fs = require('fs');
       const path = require('path');
-      const uploadDir = path.join(__dirname, '../uploads');
+      const uploadDir = path.join(process.cwd(), 'uploads');
       if (!fs.existsSync(uploadDir)){
         fs.mkdirSync(uploadDir, { recursive: true });
       }
@@ -32,7 +32,8 @@ const upload = multer({
   fileFilter: function(req, file, cb) {
     // Accept images only
     if (!file.originalname.match(/\.(jpg|jpeg|png|gif)$/i)) {
-      return cb(new Error('Only image files are allowed!'), false);
+      // Instead of passing an error, just return false with a message
+      return cb(null, false);
     }
     cb(null, true);
   }
