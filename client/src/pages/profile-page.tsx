@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -78,6 +78,16 @@ export default function ProfilePage() {
     email: z.string().email("Please enter a valid email").min(1, "Email is required"),
     language: z.string().min(1, "Language is required"),
   });
+  
+  // Password change form schema
+  const passwordFormSchema = z.object({
+    currentPassword: z.string().min(6, "Current password is required"),
+    newPassword: z.string().min(6, "Password must be at least 6 characters"),
+    confirmPassword: z.string().min(6, "Please confirm your password"),
+  }).refine((data) => data.newPassword === data.confirmPassword, {
+    message: "Passwords don't match",
+    path: ["confirmPassword"],
+  });
 
   // Company form schema
   const companyFormSchema = z.object({
@@ -114,7 +124,7 @@ export default function ProfilePage() {
   });
 
   // Update company form when data is loaded
-  React.useEffect(() => {
+  useEffect(() => {
     if (company) {
       companyForm.reset({
         name: company.name || "",
@@ -239,7 +249,7 @@ export default function ProfilePage() {
                       <div className="bg-primary h-16 w-16 rounded-full flex items-center justify-center text-white font-medium text-xl">
                         {user?.firstName && user?.lastName
                           ? `${user.firstName.charAt(0)}${user.lastName.charAt(0)}`
-                          : user?.username.substring(0, 2).toUpperCase()}
+                          : user?.email ? user.email.substring(0, 2).toUpperCase() : "U"}
                       </div>
                       <div>
                         <h3 className="font-medium">Profile Picture</h3>
