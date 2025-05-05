@@ -6,6 +6,7 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/lib/supabase";
 import { Layout } from "@/components/layout/layout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -36,7 +37,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { Camera, User, Building2, CreditCard, Shield, Languages } from "lucide-react";
+import { Camera, User, Building2, CreditCard, Shield, Languages, Loader2 } from "lucide-react";
 
 export default function ProfilePage() {
   const { user } = useAuth();
@@ -198,6 +199,51 @@ export default function ProfilePage() {
   // Handle company form submission
   const onCompanySubmit = (values: z.infer<typeof companyFormSchema>) => {
     companyMutation.mutate(values);
+  };
+  
+  // Password form
+  const passwordForm = useForm<z.infer<typeof passwordFormSchema>>({
+    resolver: zodResolver(passwordFormSchema),
+    defaultValues: {
+      currentPassword: "",
+      newPassword: "",
+      confirmPassword: "",
+    },
+  });
+  
+  // Change password mutation
+  const changePasswordMutation = useMutation({
+    mutationFn: async (data: z.infer<typeof passwordFormSchema>) => {
+      const { currentPassword, newPassword } = data;
+      const { error } = await supabase.auth.updateUser({
+        password: newPassword,
+      });
+      
+      if (error) {
+        throw new Error(error.message);
+      }
+      
+      return { success: true };
+    },
+    onSuccess: () => {
+      passwordForm.reset();
+      toast({
+        title: "Password updated",
+        description: "Your password has been changed successfully.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Failed to update password",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+  
+  // Handle password form submission
+  const onPasswordSubmit = (values: z.infer<typeof passwordFormSchema>) => {
+    changePasswordMutation.mutate(values);
   };
 
   return (
@@ -639,7 +685,66 @@ export default function ProfilePage() {
                   <p className="text-neutral-600 dark:text-neutral-400 mb-4">
                     Change your password to keep your account secure
                   </p>
-                  <Button>Change Password</Button>
+                  
+                  <Form {...passwordForm}>
+                    <form onSubmit={passwordForm.handleSubmit(onPasswordSubmit)} className="space-y-4">
+                      <FormField
+                        control={passwordForm.control}
+                        name="currentPassword"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Current Password</FormLabel>
+                            <FormControl>
+                              <Input type="password" placeholder="••••••••" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      
+                      <FormField
+                        control={passwordForm.control}
+                        name="newPassword"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>New Password</FormLabel>
+                            <FormControl>
+                              <Input type="password" placeholder="••••••••" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      
+                      <FormField
+                        control={passwordForm.control}
+                        name="confirmPassword"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Confirm New Password</FormLabel>
+                            <FormControl>
+                              <Input type="password" placeholder="••••••••" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      
+                      <Button 
+                        type="submit" 
+                        disabled={changePasswordMutation.isPending}
+                      >
+                        {changePasswordMutation.isPending ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Updating Password...
+                          </>
+                        ) : (
+                          "Update Password"
+                        )}
+                      </Button>
+                    </form>
+                  </Form>
                 </div>
 
                 <Separator />
@@ -663,7 +768,25 @@ export default function ProfilePage() {
                   <p className="text-neutral-600 dark:text-neutral-400 mb-4">
                     Manage your active sessions across devices
                   </p>
-                  <Button variant="outline" className="text-destructive border-destructive">
+                  <Button 
+                    variant="outline" 
+                    className="text-destructive border-destructive"
+                    onClick={async () => {
+                      try {
+                        await supabase.auth.signOut({ scope: 'global' });
+                        toast({
+                          title: "All sessions signed out",
+                          description: "You have been signed out from all devices.",
+                        });
+                      } catch (error) {
+                        toast({
+                          title: "Error signing out sessions",
+                          description: "There was an error signing out from all devices.",
+                          variant: "destructive"
+                        });
+                      }
+                    }}
+                  >
                     Sign Out All Devices
                   </Button>
                 </div>
