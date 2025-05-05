@@ -1,70 +1,15 @@
-import { db } from "@db";
+import { supabase } from './supabase';
+import { IStorage } from './types';
 import { 
-  users, insertUserSchema, 
-  companies, insertCompanySchema,
-  emissions, insertEmissionSchema,
-  emissionCategories,
-  reports, insertReportSchema,
-  subscriptionPlans, subscriptions,
-  supportCategories, supportTickets, supportMessages, helpArticles,
+  insertUserSchema, insertCompanySchema, 
+  insertEmissionSchema, insertReportSchema,
   insertSupportTicketSchema, insertSupportMessageSchema
 } from "@shared/schema";
-import { eq, desc, and, between, gte, lte, asc, sql } from "drizzle-orm";
 import session from "express-session";
 import connectPg from "connect-pg-simple";
 import { pool } from "@db";
 
 const PostgresSessionStore = connectPg(session);
-
-export interface IStorage {
-  // User methods
-  getUser: (id: number) => Promise<any>;
-  getUserByUsername: (username: string) => Promise<any>;
-  getUserByEmail: (email: string) => Promise<any>;
-  createUser: (userData: any) => Promise<any>;
-  updateUser: (id: number, userData: any) => Promise<any>;
-
-  // Company methods
-  getCompany: (id: number) => Promise<any>;
-  createCompany: (companyData: any) => Promise<any>;
-  updateCompany: (id: number, companyData: any) => Promise<any>;
-  
-  // Emissions methods
-  getEmissions: (companyId: number, filters?: { startDate?: Date, endDate?: Date, scope?: string }) => Promise<any[]>;
-  getEmissionById: (id: number) => Promise<any>;
-  createEmission: (emissionData: any) => Promise<any>;
-  updateEmission: (id: number, emissionData: any) => Promise<any>;
-  
-  // Categories methods
-  getEmissionCategories: () => Promise<any[]>;
-  
-  // Reports methods
-  getReports: (companyId: number) => Promise<any[]>;
-  getReportById: (id: number) => Promise<any>;
-  createReport: (reportData: any) => Promise<any>;
-  
-  // Subscription methods
-  getSubscriptionPlans: () => Promise<any[]>;
-  getCompanySubscription: (companyId: number) => Promise<any>;
-  
-  // Support methods
-  getSupportCategories: () => Promise<any[]>;
-  getSupportTickets: (userId: number, filters?: { status?: string }) => Promise<any[]>;
-  getSupportTicketById: (id: number) => Promise<any>;
-  createSupportTicket: (ticketData: any) => Promise<any>;
-  updateSupportTicket: (id: number, ticketData: any) => Promise<any>;
-  getSupportMessages: (ticketId: number) => Promise<any[]>;
-  createSupportMessage: (messageData: any) => Promise<any>;
-  
-  // Help articles methods
-  getHelpArticles: (filters?: { categoryId?: number, isPublished?: boolean }) => Promise<any[]>;
-  getHelpArticleBySlug: (slug: string) => Promise<any>;
-  getHelpArticleById: (id: number) => Promise<any>;
-  incrementArticleViews: (id: number) => Promise<any>;
-  
-  // Session store
-  sessionStore: any;
-}
 
 class DatabaseStorage implements IStorage {
   sessionStore: any;
@@ -79,353 +24,372 @@ class DatabaseStorage implements IStorage {
 
   // User methods
   async getUser(id: number) {
-    return await db.query.users.findFirst({
-      where: eq(users.id, id),
-      with: {
-        company: true
-      }
-    });
+    const { data: user, error } = await supabase
+      .from('users')
+      .select('*, company:companies(*)')
+      .eq('id', id)
+      .single();
+
+    if (error) throw error;
+    return user;
   }
 
   async getUserByUsername(username: string) {
-    return await db.query.users.findFirst({
-      where: eq(users.username, username),
-      with: {
-        company: true
-      }
-    });
+    const { data: user, error } = await supabase
+      .from('users')
+      .select('*, company:companies(*)')
+      .eq('username', username)
+      .single();
+
+    if (error) throw error;
+    return user;
   }
 
   async getUserByEmail(email: string) {
-    return await db.query.users.findFirst({
-      where: eq(users.email, email)
-    });
+    const { data: user, error } = await supabase
+      .from('users')
+      .select('*')
+      .eq('email', email)
+      .single();
+
+    if (error) throw error;
+    return user;
   }
 
   async createUser(userData: any) {
     const validatedData = insertUserSchema.parse(userData);
-    const [user] = await db.insert(users).values(validatedData).returning();
+    const { data: user, error } = await supabase
+      .from('users')
+      .insert(validatedData)
+      .select()
+      .single();
+
+    if (error) throw error;
     return user;
   }
 
   async updateUser(id: number, userData: any) {
-    const [updatedUser] = await db.update(users)
-      .set({ ...userData, updatedAt: new Date() })
-      .where(eq(users.id, id))
-      .returning();
-    return updatedUser;
+    const { data: user, error } = await supabase
+      .from('users')
+      .update({ ...userData, updated_at: new Date() })
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return user;
   }
 
   // Company methods
   async getCompany(id: number) {
-    return await db.query.companies.findFirst({
-      where: eq(companies.id, id)
-    });
+    const { data: company, error } = await supabase
+      .from('companies')
+      .select('*')
+      .eq('id', id)
+      .single();
+
+    if (error) throw error;
+    return company;
   }
 
   async createCompany(companyData: any) {
     const validatedData = insertCompanySchema.parse(companyData);
-    const [company] = await db.insert(companies).values(validatedData).returning();
+    const { data: company, error } = await supabase
+      .from('companies')
+      .insert(validatedData)
+      .select()
+      .single();
+
+    if (error) throw error;
     return company;
   }
 
   async updateCompany(id: number, companyData: any) {
-    const [updatedCompany] = await db.update(companies)
-      .set({ ...companyData, updatedAt: new Date() })
-      .where(eq(companies.id, id))
-      .returning();
-    return updatedCompany;
+    const { data: company, error } = await supabase
+      .from('companies')
+      .update({ ...companyData, updated_at: new Date() })
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return company;
   }
 
   // Emissions methods
   async getEmissions(companyId: number, filters?: { startDate?: Date, endDate?: Date, scope?: string }) {
-    let query = db.query.emissions.findMany({
-      where: eq(emissions.companyId, companyId),
-      with: {
-        category: true,
-        creator: true,
-        verifier: true
-      },
-      orderBy: desc(emissions.date)
-    });
+    let query = supabase
+      .from('emissions')
+      .select('*, category:emission_categories(*), creator:users(*), verifier:users(*)')
+      .eq('company_id', companyId)
+      .order('date', { ascending: false });
 
-    // Apply filters if provided
     if (filters) {
-      if (filters.startDate && filters.endDate) {
-        query = db.query.emissions.findMany({
-          where: and(
-            eq(emissions.companyId, companyId),
-            between(emissions.date, filters.startDate, filters.endDate)
-          ),
-          with: {
-            category: true,
-            creator: true,
-            verifier: true
-          },
-          orderBy: desc(emissions.date)
-        });
-      } else if (filters.startDate) {
-        query = db.query.emissions.findMany({
-          where: and(
-            eq(emissions.companyId, companyId),
-            gte(emissions.date, filters.startDate)
-          ),
-          with: {
-            category: true,
-            creator: true,
-            verifier: true
-          },
-          orderBy: desc(emissions.date)
-        });
-      } else if (filters.endDate) {
-        query = db.query.emissions.findMany({
-          where: and(
-            eq(emissions.companyId, companyId),
-            lte(emissions.date, filters.endDate)
-          ),
-          with: {
-            category: true,
-            creator: true,
-            verifier: true
-          },
-          orderBy: desc(emissions.date)
-        });
+      if (filters.startDate) {
+        query = query.gte('date', filters.startDate.toISOString());
+      }
+      if (filters.endDate) {
+        query = query.lte('date', filters.endDate.toISOString());
+      }
+      if (filters.scope) {
+        query = query.eq('scope', filters.scope);
       }
     }
 
-    return await query;
+    const { data: emissions, error } = await query;
+    if (error) throw error;
+    return emissions;
   }
 
   async getEmissionById(id: number) {
-    return await db.query.emissions.findFirst({
-      where: eq(emissions.id, id),
-      with: {
-        category: true,
-        creator: true,
-        verifier: true
-      }
-    });
+    const { data: emission, error } = await supabase
+      .from('emissions')
+      .select('*, category:emission_categories(*), creator:users(*), verifier:users(*)')
+      .eq('id', id)
+      .single();
+
+    if (error) throw error;
+    return emission;
   }
 
   async createEmission(emissionData: any) {
     const validatedData = insertEmissionSchema.parse(emissionData);
-    const [emission] = await db.insert(emissions).values(validatedData).returning();
+    const { data: emission, error } = await supabase
+      .from('emissions')
+      .insert(validatedData)
+      .select()
+      .single();
+
+    if (error) throw error;
     return emission;
   }
 
   async updateEmission(id: number, emissionData: any) {
-    const [updatedEmission] = await db.update(emissions)
-      .set({ ...emissionData, updatedAt: new Date() })
-      .where(eq(emissions.id, id))
-      .returning();
-    return updatedEmission;
+    const { data: emission, error } = await supabase
+      .from('emissions')
+      .update({ ...emissionData, updated_at: new Date() })
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return emission;
   }
 
   // Categories methods
   async getEmissionCategories() {
-    return await db.query.emissionCategories.findMany();
+    const { data: categories, error } = await supabase
+      .from('emission_categories')
+      .select('*');
+
+    if (error) throw error;
+    return categories;
   }
 
   // Reports methods
   async getReports(companyId: number) {
-    return await db.query.reports.findMany({
-      where: eq(reports.companyId, companyId),
-      with: {
-        creator: true
-      },
-      orderBy: desc(reports.createdAt)
-    });
+    const { data: reports, error } = await supabase
+      .from('reports')
+      .select('*, creator:users(*)')
+      .eq('company_id', companyId)
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+    return reports;
   }
 
   async getReportById(id: number) {
-    return await db.query.reports.findFirst({
-      where: eq(reports.id, id),
-      with: {
-        creator: true
-      }
-    });
+    const { data: report, error } = await supabase
+      .from('reports')
+      .select('*, creator:users(*)')
+      .eq('id', id)
+      .single();
+
+    if (error) throw error;
+    return report;
   }
 
   async createReport(reportData: any) {
     const validatedData = insertReportSchema.parse(reportData);
-    const [report] = await db.insert(reports).values(validatedData).returning();
+    const { data: report, error } = await supabase
+      .from('reports')
+      .insert(validatedData)
+      .select()
+      .single();
+
+    if (error) throw error;
     return report;
   }
 
   // Subscription methods
   async getSubscriptionPlans() {
-    return await db.query.subscriptionPlans.findMany();
+    const { data: plans, error } = await supabase
+      .from('subscription_plans')
+      .select('*');
+    if (error) throw error;
+    return plans;
   }
 
   async getCompanySubscription(companyId: number) {
-    return await db.query.subscriptions.findFirst({
-      where: and(
-        eq(subscriptions.companyId, companyId),
-        eq(subscriptions.status, 'active')
-      ),
-      with: {
-        plan: true
-      }
-    });
+    const { data: subscription, error } = await supabase
+      .from('subscriptions')
+      .select('*, plan:subscription_plans(*)')
+      .eq('company_id', companyId)
+      .eq('status', 'active')
+      .single();
+    if (error) throw error;
+    return subscription;
   }
 
   // Support methods
   async getSupportCategories() {
-    return await db.query.supportCategories.findMany();
+    const { data: categories, error } = await supabase
+      .from('support_categories')
+      .select('*');
+
+    if (error) throw error;
+    return categories;
   }
 
   async getSupportTickets(userId: number, filters?: { status?: string }) {
-    let query = db.query.supportTickets.findMany({
-      where: eq(supportTickets.userId, userId),
-      with: {
-        category: true,
-        user: true
-      },
-      orderBy: [
-        desc(supportTickets.updatedAt),
-        desc(supportTickets.createdAt)
-      ]
-    });
+    let query = supabase
+      .from('support_tickets')
+      .select('*, category:support_categories(*), user:users(*)')
+      .eq('user_id', userId)
+      .order('updated_at', { ascending: false });
 
-    // Apply status filter if provided
     if (filters?.status) {
-      query = db.query.supportTickets.findMany({
-        where: and(
-          eq(supportTickets.userId, userId),
-          eq(supportTickets.status, filters.status)
-        ),
-        with: {
-          category: true,
-          user: true
-        },
-        orderBy: [
-          desc(supportTickets.updatedAt),
-          desc(supportTickets.createdAt)
-        ]
-      });
+      query = query.eq('status', filters.status);
     }
 
-    return await query;
+    const { data: tickets, error } = await query;
+    if (error) throw error;
+    return tickets;
   }
 
   async getSupportTicketById(id: number) {
-    return await db.query.supportTickets.findFirst({
-      where: eq(supportTickets.id, id),
-      with: {
-        category: true,
-        user: true,
-        messages: {
-          with: {
-            user: true
-          },
-          orderBy: asc(supportMessages.createdAt)
-        }
-      }
-    });
+    const { data: ticket, error } = await supabase
+      .from('support_tickets')
+      .select(`
+        *,
+        category:support_categories(*),
+        user:users(*),
+        messages:support_messages(
+          *,
+          user:users(*)
+        )
+      `)
+      .eq('id', id)
+      .order('created_at', { foreignTable: 'messages', ascending: true })
+      .single();
+
+    if (error) throw error;
+    return ticket;
   }
 
   async createSupportTicket(ticketData: any) {
     const validatedData = insertSupportTicketSchema.parse(ticketData);
-    const [ticket] = await db.insert(supportTickets).values(validatedData).returning();
+    const { data: ticket, error } = await supabase
+      .from('support_tickets')
+      .insert(validatedData)
+      .select()
+      .single();
+
+    if (error) throw error;
     return ticket;
   }
 
   async updateSupportTicket(id: number, ticketData: any) {
-    const [updatedTicket] = await db.update(supportTickets)
-      .set({ ...ticketData, updatedAt: new Date() })
-      .where(eq(supportTickets.id, id))
-      .returning();
-    return updatedTicket;
+    const { data: ticket, error } = await supabase
+      .from('support_tickets')
+      .update({ ...ticketData, updated_at: new Date() })
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return ticket;
   }
 
   async getSupportMessages(ticketId: number) {
-    return await db.query.supportMessages.findMany({
-      where: eq(supportMessages.ticketId, ticketId),
-      with: {
-        user: true
-      },
-      orderBy: asc(supportMessages.createdAt)
-    });
+    const { data: messages, error } = await supabase
+      .from('support_messages')
+      .select('*, user:users(*)')
+      .eq('ticket_id', ticketId)
+      .order('created_at', { ascending: true });
+
+    if (error) throw error;
+    return messages;
   }
 
   async createSupportMessage(messageData: any) {
     const validatedData = insertSupportMessageSchema.parse(messageData);
-    const [message] = await db.insert(supportMessages).values(validatedData).returning();
-    
-    // Update the ticket's updatedAt timestamp
-    await db.update(supportTickets)
-      .set({ updatedAt: new Date() })
-      .where(eq(supportTickets.id, messageData.ticketId));
-    
+    const { data: message, error } = await supabase
+      .from('support_messages')
+      .insert(validatedData)
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    // Update ticket's updated_at
+    await supabase
+      .from('support_tickets')
+      .update({ updated_at: new Date() })
+      .eq('id', messageData.ticket_id);
+
     return message;
   }
 
   // Help articles methods
   async getHelpArticles(filters?: { categoryId?: number, isPublished?: boolean }) {
-    let query = db.query.helpArticles.findMany({
-      with: {
-        category: true
-      },
-      orderBy: [
-        desc(helpArticles.updatedAt),
-        desc(helpArticles.createdAt)
-      ]
-    });
+    let query = supabase
+      .from('help_articles')
+      .select('*, category:support_categories(*)')
+      .order('updated_at', {ascending: false})
+      .order('created_at', {ascending: false});
 
-    // Apply filters if provided
     if (filters) {
-      let conditions = [];
-      
       if (filters.categoryId) {
-        conditions.push(eq(helpArticles.categoryId, filters.categoryId));
+        query = query.eq('category_id', filters.categoryId);
       }
-      
       if (filters.isPublished !== undefined) {
-        conditions.push(eq(helpArticles.isPublished, filters.isPublished));
-      }
-
-      if (conditions.length > 0) {
-        query = db.query.helpArticles.findMany({
-          where: and(...conditions),
-          with: {
-            category: true
-          },
-          orderBy: [
-            desc(helpArticles.updatedAt),
-            desc(helpArticles.createdAt)
-          ]
-        });
+        query = query.eq('is_published', filters.isPublished);
       }
     }
-
-    return await query;
+    const {data: articles, error} = await query;
+    if (error) throw error;
+    return articles;
   }
 
   async getHelpArticleBySlug(slug: string) {
-    return await db.query.helpArticles.findFirst({
-      where: eq(helpArticles.slug, slug),
-      with: {
-        category: true
-      }
-    });
+    const { data: article, error } = await supabase
+      .from('help_articles')
+      .select('*, category:support_categories(*)')
+      .eq('slug', slug)
+      .single();
+    if (error) throw error;
+    return article;
   }
 
   async getHelpArticleById(id: number) {
-    return await db.query.helpArticles.findFirst({
-      where: eq(helpArticles.id, id),
-      with: {
-        category: true
-      }
-    });
+    const { data: article, error } = await supabase
+      .from('help_articles')
+      .select('*, category:support_categories(*)')
+      .eq('id', id)
+      .single();
+    if (error) throw error;
+    return article;
   }
 
   async incrementArticleViews(id: number) {
-    const [article] = await db.update(helpArticles)
-      .set({
-        views: sql`${helpArticles.views} + 1`
-      })
-      .where(eq(helpArticles.id, id))
-      .returning();
+    const { data: article, error } = await supabase
+      .from('help_articles')
+      .update({ views: sql`views + 1` })
+      .eq('id', id)
+      .select()
+      .single();
+    if (error) throw error;
     return article;
   }
 }
