@@ -9,6 +9,8 @@ import {
   insertEmissionSchema, insertReportSchema,
   insertSupportTicketSchema, insertSupportMessageSchema
 } from "@shared/schema";
+import { supabaseSupport } from "./support-storage";
+import { initializeSupportSystem } from "./supabase-setup";
 import fs from "fs";
 import path from "path";
 
