@@ -143,31 +143,22 @@ export default function ProfilePage() {
   // Avatar upload mutation
   const uploadAvatarMutation = useMutation({
     mutationFn: async (file: File) => {
-      // Generate a unique file name
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${user?.id}-${Math.random().toString(36).substring(2)}.${fileExt}`;
+      // Instead of using Supabase storage directly, let's use our backend as a proxy
+      // Create a FormData object to send the file
+      const formData = new FormData();
+      formData.append('avatar', file);
       
-      // Upload the file to Supabase Storage
-      const { data, error } = await supabase.storage
-        .from('avatars')
-        .upload(fileName, file, {
-          cacheControl: '3600',
-          upsert: true
-        });
-      
-      if (error) {
-        throw new Error(error.message);
-      }
-      
-      // Get the public URL for the uploaded file
-      const { data: { publicUrl } } = supabase.storage
-        .from('avatars')
-        .getPublicUrl(fileName);
-      
-      // Update the user profile with the avatar URL
-      const res = await apiRequest("PATCH", `/user/${user?.id}`, { 
-        avatarUrl: publicUrl 
+      // Upload the file through our API
+      const res = await fetch(`/api/user/${user?.id}/avatar`, {
+        method: 'POST',
+        body: formData,
+        credentials: 'include',
       });
+      
+      if (!res.ok) {
+        const errorText = await res.text();
+        throw new Error(errorText || `Failed to upload avatar: ${res.status}`);
+      }
       
       return await res.json();
     },

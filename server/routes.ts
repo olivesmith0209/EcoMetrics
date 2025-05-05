@@ -9,8 +9,33 @@ import { insertEmissionSchema, insertReportSchema } from "@shared/schema";
 
 // Configure multer for file uploads
 const upload = multer({
-  storage: multer.memoryStorage(),
-  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit
+  storage: multer.diskStorage({
+    destination: function(req, file, cb) {
+      // Create uploads directory if it doesn't exist
+      const fs = require('fs');
+      const path = require('path');
+      const uploadDir = path.join(__dirname, '../uploads');
+      if (!fs.existsSync(uploadDir)){
+        fs.mkdirSync(uploadDir, { recursive: true });
+      }
+      cb(null, uploadDir);
+    },
+    filename: function(req, file, cb) {
+      const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+      const ext = file.originalname.split('.').pop();
+      cb(null, `avatar-${uniqueSuffix}.${ext}`);
+    }
+  }),
+  limits: { 
+    fileSize: 2 * 1024 * 1024 // 2MB limit for avatars
+  },
+  fileFilter: function(req, file, cb) {
+    // Accept images only
+    if (!file.originalname.match(/\.(jpg|jpeg|png|gif)$/i)) {
+      return cb(new Error('Only image files are allowed!'), false);
+    }
+    cb(null, true);
+  }
 });
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -387,6 +412,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (req.body.lastName !== undefined) userData.lastName = req.body.lastName;
       if (req.body.email !== undefined) userData.email = req.body.email;
       if (req.body.language !== undefined) userData.language = req.body.language;
+      if (req.body.avatarUrl !== undefined) userData.avatarUrl = req.body.avatarUrl;
       
       // Don't update if no data was provided
       if (Object.keys(userData).length === 0) {
@@ -403,7 +429,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         email: updatedUser.email,
         language: updatedUser.language,
         username: updatedUser.username,
-        companyId: updatedUser.companyId
+        companyId: updatedUser.companyId,
+        avatarUrl: updatedUser.avatarUrl
       });
     } catch (error) {
       console.error("Error updating user:", error);
@@ -411,6 +438,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ errors: error.errors });
       }
       res.status(500).json({ message: "Failed to update user" });
+    }
+  });
+  
+  // Upload avatar image
+  app.post(`${apiPrefix}/user/:id/avatar`, requireAuth, upload.single('avatar'), async (req, res) => {
+    try {
+      const userId = parseInt(req.params.id);
+      
+      // Verify user is updating their own profile
+      if (req.user.id !== userId) {
+        return res.status(403).json({ message: "Not authorized to update this user" });
+      }
+      
+      // Check if file was provided
+      if (!req.file) {
+        return res.status(400).json({ message: "No file uploaded" });
+      }
+      
+      // In a real application, we would upload to a proper storage solution
+      // For now, we'll just simulate an avatar URL
+      const avatarUrl = `/uploads/${req.file.filename}`;
+      
+      // Update user with avatar URL
+      const userData = { avatarUrl };
+      const updatedUser = await storage.updateUser(userId, userData);
+      
+      res.json({
+        id: updatedUser.id,
+        firstName: updatedUser.firstName,
+        lastName: updatedUser.lastName,
+        email: updatedUser.email,
+        language: updatedUser.language,
+        username: updatedUser.username,
+        companyId: updatedUser.companyId,
+        avatarUrl: updatedUser.avatarUrl
+      });
+    } catch (error) {
+      console.error("Error uploading avatar:", error);
+      res.status(500).json({ message: "Failed to upload avatar" });
     }
   });
 
