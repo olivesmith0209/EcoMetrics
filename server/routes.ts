@@ -367,6 +367,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ===== User Routes =====
+  
+  // Update user profile
+  app.patch(`${apiPrefix}/user/:id`, requireAuth, async (req, res) => {
+    try {
+      const userId = parseInt(req.params.id);
+      
+      // Verify user is updating their own profile
+      if (req.user.id !== userId) {
+        return res.status(403).json({ message: "Not authorized to update this user" });
+      }
+      
+      // Extract user data from request body
+      const userData = {
+        firstName: req.body.firstName,
+        lastName: req.body.lastName,
+        email: req.body.email,
+        language: req.body.language
+      };
+      
+      const updatedUser = await storage.updateUser(userId, userData);
+      res.json(updatedUser);
+    } catch (error) {
+      console.error("Error updating user:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to update user" });
+    }
+  });
+
   // ===== Subscription Routes =====
   
   // Get all subscription plans
