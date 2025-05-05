@@ -458,7 +458,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // In a real application, we would upload to a proper storage solution
-      // For now, we'll just simulate an avatar URL
+      // For now, we'll just use our local server's URL
+      // We need to use a full URL path since it's an absolute URL
       const avatarUrl = `/uploads/${req.file.filename}`;
       
       // Update user with avatar URL

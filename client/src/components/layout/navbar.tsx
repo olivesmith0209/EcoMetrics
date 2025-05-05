@@ -97,8 +97,16 @@ export function Navbar({ toggleSidebar }: NavbarProps) {
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" className="flex items-center space-x-1 p-1">
-              <div className="bg-primary h-8 w-8 rounded-full flex items-center justify-center text-white font-medium text-sm">
-                {initials}
+              <div className="bg-primary h-8 w-8 rounded-full flex items-center justify-center text-white font-medium text-sm overflow-hidden">
+                {user?.avatarUrl ? (
+                  <img 
+                    src={user.avatarUrl} 
+                    alt="User avatar" 
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  initials
+                )}
               </div>
               {!isMobile && (
                 <>
