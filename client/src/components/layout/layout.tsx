@@ -19,7 +19,7 @@ export function Layout({ children }: LayoutProps) {
       <div className="flex flex-1 overflow-hidden">
         <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
         
-        <main className="flex-1 overflow-y-auto p-4 lg:p-6 bg-neutral-100 dark:bg-neutral-900">
+        <main className={`flex-1 overflow-y-auto p-4 lg:p-6 bg-neutral-100 dark:bg-neutral-900 transition-all duration-300 ${sidebarOpen ? 'lg:ml-64' : ''} mt-0 w-full`}>
           {children}
         </main>
       </div>

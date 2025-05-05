@@ -12,7 +12,7 @@ export function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
   const isMobile = useMobile();
   
   // Get active subscription
-  const { data: subscription } = useQuery({
+  const { data: subscription } = useQuery<any>({
     queryKey: ["/api/subscription"],
     enabled: !!user?.companyId,
   });
@@ -90,8 +90,9 @@ export function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
       
       <aside 
         className={cn(
-          "w-64 shrink-0 border-r border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 flex flex-col h-[calc(100vh-4rem)] overflow-y-auto fixed lg:relative z-20",
-          isMobile ? "transform transition-transform duration-300" : ""
+          "w-64 shrink-0 border-r border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 flex flex-col h-screen overflow-y-auto fixed top-0 pt-16 z-20",
+          isMobile && !isOpen ? "-translate-x-full" : "",
+          "transform transition-transform duration-300"
         )}
       >
         {/* Navigation Sections */}
